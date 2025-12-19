@@ -13,4 +13,5 @@ dependencies:
   - tqdm
   - labelme
   - pyqt
+  - pyyaml
 prefix: /Users/gaspardringuenet/miniforge3/envs/acoustic-communities
