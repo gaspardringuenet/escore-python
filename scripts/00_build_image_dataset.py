@@ -26,6 +26,9 @@ if __name__ == '__main__':
                                     echogram_cmap=img_config["echogram_cmap"])
 
     # Build Dataset
-    build_dataset(config=dataset_config, 
-                  ei_list=img_config["ei_list"], 
-                  root_path=Path(config["paths"]["echogram_images_dir"]))
+    build_dataset(
+        dataset_config=dataset_config, 
+        global_config=config,
+        ei_list=img_config["ei_list"], 
+        root_path=Path(config["paths"]["echogram_images_dir"])
+    )

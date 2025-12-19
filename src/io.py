@@ -1,24 +1,24 @@
+from pathlib import Path
 from datetime import datetime
 import numpy as np
 import xarray as xr
 
-from .data_config import DATA_DICT, EI_DICT
 
 # Import function allowing to import and combine legs as a single `xarray.Dataset`
-def load_survey_ds(survey, chunks={"time": 1000, "depth": 100}):
+def load_survey_ds(survey, config, chunks={"time": 1000, "depth": 100}):
     leg_list = []
     
-    for leg_name in EI_DICT.get(survey):
-        leg_id = leg_name.split("_")[-1]
+    for key in config["surveys"][survey]:
+        leg_id = config["sv_files"][key]["leg_id"]
 
-        leg_path = DATA_DICT.get(leg_name)
+        file_path = Path(config["paths"]["input_dir"]) / config["sv_files"][key]["file"]
 
-        leg_ds = xr.open_dataset(leg_path, chunks=chunks)
+        file_ds = xr.open_dataset(file_path, chunks=chunks)
 
         # Add a 'leg' variable to each dataset
-        leg_ds = leg_ds.assign_coords(leg=(('time',), [leg_id]*leg_ds.sizes['time']))
+        file_ds = file_ds.assign_coords(leg=(('time',), [leg_id]*file_ds.sizes['time']))
 
-        leg_list.append(leg_ds)
+        leg_list.append(file_ds)
 
     # Concatenate and sort by time to ensure order
     combined = xr.concat(leg_list, dim='time', data_vars='all')
@@ -29,6 +29,7 @@ def load_survey_ds(survey, chunks={"time": 1000, "depth": 100}):
         ds = combined
 
     return ds
+
 
 # Get basic information on the survey
 # Get start and end time as datetimes
@@ -47,6 +48,7 @@ def get_start_end_time_str(ds: xr.Dataset,
     end = end_dt.strftime(dest_format)
 
     return start, end
+
 
 # Summary function
 def print_file_infos(ds: xr.Dataset, tz="UTC"):

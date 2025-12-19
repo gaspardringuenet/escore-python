@@ -1,37 +1,51 @@
+# Suggestions for improvements:
+# - put all the data parameters in a "data" field (not sure it's necessary)
+# - clarify the use of 'survey' and 'ei' (currently some confusion in parameters names)
+
+
 # DATA PARAMETERS
 # Main data paths
 paths:
-  input_dir: "data/input/netDCF-echointegrations"
-  echogram_images_dir: "data/echogram_images"
-  interim_dir: "data/interim"
+    input_dir: "data/input/netCDF-echointegrations"
+    echogram_images_dir: "data/echogram_images"
+    interim_dir: "data/interim"
 
 
 # Location of the Sv netCDF files in input_dir
+# leg_id allows the concatenation of sv_files from the same survey into a single xarray.Dataset
+# Data from each file can then be identified using the new "leg" Dataset dimension
 sv_files:
     abracos1_3pings1m_leg1:
+      leg_id: leg1
       file: "Abracos_A1/high-res/LEG01/IRD_SOOP-BA_A_20150929T192933Z_ANTEA_FV02_ABRACOS-38-70-120-200_END-20151021T190616Z_C.nc"
     abracos1_3pings1m_leg2:
+      leg_id: leg2
       file: "Abracos_A1/high-res/LEG02/IRD_SOOP-BA_A_20150929T192933Z_ANTEA_FV02_ABRACOS-38-70-120-200_END-20151021T190616Z.nc"
     abracos2_3pings1m_leg1:
+      leg_id: leg1
       file: "Abracos_A2/high-res/LEG01/IRD_SOOP-BA_A_20170409T110633Z_ANTEA_FV02_ABRACOS-38-70-120-200_END-20170507T000620Z_C-20201002T113129Z.nc"
-    abracos2_3pings1m_leg2:
+    writing_anything_for_test: #abracos2_3pings1m_leg2:
+      leg_id: leg2
       file: "Abracos_A2/high-res/LEG02/IRD_SOOP-BA_A_20170409T110633Z_ANTEA_FV02_ABRACOS-38-70-120-200_END-20170507T000620Z_C-20201002T160241Z.nc"
     amazomix_3pings1m_leg1:
+      leg_id: leg1
       file: "Amazomix/EI_3pings_1m_leg01/IRD_SOOP-BA_A_20210828T223155Z_ANTEA_FV02_AMAZOMIX2021-38-70-120-200_END-20211008T082151Z_C-20251014T104337Z.nc"
-    amazomix_3pings1m_leg2_1: 
+    amazomix_3pings1m_leg2_1:
+      leg_id: leg2
       file: "Amazomix/EI_3pings_1m_leg02/IRD_SOOP-BA_A_20210828T223155Z_ANTEA_FV02_AMAZOMIX2021-38-70-120-200_END-20211008T082151Z_C-20251014T144439Z.nc"
     amazomix_3pings1m_leg2_2:
+      leg_id: leg2
       file: "Amazomix/EI_3pings_1m_leg02/IRD_SOOP-BA_A_20210828T223155Z_ANTEA_FV02_AMAZOMIX2021-38-70-120-200_END-20211008T082151Z_C-20251014T145017Z.nc"
 
 
-# How to aggregate different legs of the same survey
+# How to aggregate sv_file of the same survey.
 surveys:
     abracos1_3pings1m: 
-      - abracos1_3pings1m_leg1
+      - abracos1_3pings1m_leg1      # Not convention required for naming, but must correspond to an sv_file element.
       - abracos1_3pings1m_leg2
     abracos2_3pings1m:
       - abracos2_3pings1m_leg1
-      - abracos2_3pings1m_leg2
+      - writing_anything_for_test #abracos2_3pings1m_leg2
     amazomix_3pings1m:
       - amazomix_3pings1m_leg1
       - amazomix_3pings1m_leg2_1
@@ -41,22 +55,22 @@ surveys:
 # ROI LABELLING PARAMETERS
 # Parameters to build the image dataset for ROI labelling
 image_dataset:
-  ei_list:
-    - amazomix_3pings1m
-    - abracos1_3pings1m
-    - abracos2_3pings1m
-  time_frame_size: 10000
-  vmin: -90                 # floats are accepted
-  vmax: -50
-  z_min_idx: 0
-  z_max_idx: -1
-  frequencies: [38., 70., 120.]
-  echogram_cmap: "RGB"
+    ei_list:
+      - amazomix_3pings1m
+      - abracos1_3pings1m
+      - abracos2_3pings1m
+    time_frame_size: 10000
+    vmin: -90                 # floats are accepted
+    vmax: -50
+    z_min_idx: 0
+    z_max_idx: -1
+    frequencies: [38., 70., 120.]
+    echogram_cmap: "RGB"
 
 
 # Interactive labelling parameters
 session:
-  ei: amazomix_3pings_1m              # the survey echointegration on which to work. Choose only one.
-  images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
-  library_name: "test_0"              # the name of the library (identifies the labelling and analysis session)
+    ei: amazomix_3pings_1m              # the survey echointegration on which to work. Choose only one.
+    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
+    library_name: "test_0"              # the name of the library (identifies the labelling and analysis session)
 

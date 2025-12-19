@@ -3,9 +3,11 @@ import json
 import shutil
 import subprocess
 from datetime import datetime
-
 import argparse
+
 from src.config import load_config
+from src.io import load_survey_ds
+
 
 
 def add_shape_ids(json_dir: Path, session_id: str, start_id: int = 0):
@@ -85,3 +87,5 @@ if __name__ == '__main__':
 
     # Copy all JSONs to work_dir for further use
     copy_files(in_dir=roi_json_path, out_dir=work_dir_json_path)
+
+    # Convert 

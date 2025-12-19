@@ -9,9 +9,8 @@ from pathlib import Path
 import json
 from itertools import product
 
-from .io import load_survey_ds
-
-
+from src.io import load_survey_ds
+from src.config import load_config
 
 # Sv to Image tools
 
@@ -85,40 +84,68 @@ class DatasetConfig:
             json.dump(asdict(self), f, indent=2)
 
 
+    """Prints an image dataset from a DatasetConfig object.
+
+    Args:
+        dataset_config (DatasetConfig): Configuration object representing the dataset to be built.
+        global_config (dict): Global configuration file for the Escore projects. Used loop through data, and passed to laod_survey_ds.
+        ei_list (list[str]): _description_
+        root_path (Path): _description_
+    """
 
 # Dataset builder
-def build_dataset(config: DatasetConfig,
-                  ei_list: list[str],
-                  root_path: Path):
+def build_dataset(dataset_config: DatasetConfig,
+                  global_config: dict,
+                  ei_list: list[str]=None,
+                  root_path: Path=None):
+    """Prints an image dataset from a DatasetConfig object.
+
+    Args:
+        dataset_config (DatasetConfig): Configuration object representing the dataset to be built.
+        global_config (dict): Global configuration file for the Escore projects. Used loop through data, and passed to laod_survey_ds.
+        ei_list (list[str], optional): Overrides global_config['image_dataset']['ei_list']. Defaults to None.
+        root_path (Path, optional): Overrides global_config['paths']['echogram_images_dir']. Defaults to None.
+    """
     
-    dataset_path = root_path / config.name()
+    if root_path is None:
+        root_path = global_config['paths']['echogram_images_dir']
+    if ei_list is None:
+        ei_list =  global_config['image_dataset']['ei_list']
+
+    dataset_path = root_path / dataset_config.name()
     dataset_path.mkdir(parents=True, exist_ok=True)
 
     # Save metadata
-    config.save_metadata(dataset_path)
+    dataset_config.save_metadata(dataset_path)
 
     for ei in ei_list:
-        sv = load_survey_ds(survey=ei)["Sv"]
+        sv = load_survey_ds(survey=ei, config=global_config)["Sv"]
         plot_survey_RGB(sv=sv, 
-                        frame_size=config.time_frame_size, 
-                        z_min_idx=config.z_min_idx,
-                        z_max_idx=config.z_max_idx, 
-                        vmin=config.vmin, 
-                        vmax=config.vmax, 
-                        channels=config.frequencies,
-                        echogram_cmap=config.echogram_cmap,
-                        ei_save_path=dataset_path / ei, 
+                        frame_size=dataset_config.time_frame_size, 
+                        z_min_idx=dataset_config.z_min_idx,
+                        z_max_idx=dataset_config.z_max_idx, 
+                        vmin=dataset_config.vmin, 
+                        vmax=dataset_config.vmax, 
+                        channels=dataset_config.frequencies,
+                        echogram_cmap=dataset_config.echogram_cmap,
+                        ei_save_path=dataset_path/ei, 
                         ei=ei)
 
 
 
 if __name__ == '__main__':
 
+
+    """
+    /!\ Not tested /!\ 
+
     # Config grid builder
     FRAME_SIZES = [2_500, 5_000, 10_000]
     VMIN_VMAX = [(-90, -50), (-80, -50)]
     ZMIN_ZMAX = [(0, -1)]
     CHANNELS_CMAP = [((38, 70, 120), 'RGB'), (38, 'Greys_r')]
+
+    global_config = load_config("scripts/config.yml")
 
     def build_configs():
         for frame_size, (vmin, vmax), (zmin, zmax), (frequencies, echogram_cmap) in product(FRAME_SIZES, VMIN_VMAX, ZMIN_ZMAX, CHANNELS_CMAP):
@@ -133,11 +160,12 @@ if __name__ == '__main__':
             )
 
     # Build all datasets in the configs built by build_configs()
-    def build_all_datasets(ei_list, root_path):
+    def build_all_datasets(global_config, ei_list=None, root_path=None):
         for config in build_configs():
             print(f"\nBuilding dataset: {config.name()}")
             build_dataset(
-                config=config,
-                ei_list=ei_list,
-                root_path=root_path,
+                dataset_config=config,
+                global_config=global_config
             )
+
+    """
