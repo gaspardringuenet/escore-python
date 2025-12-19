@@ -35,7 +35,7 @@ surveys:
       - amazomix_3pings1m_leg2_2
 
 
-# SESSION PARAMETERS
+# WORK PARAMETERS
 # Parameters to build the image dataset for ROI labelling
 image_dataset:
   ei_list:
@@ -48,8 +48,8 @@ image_dataset:
   frequencies: [38., 70., 120.]
   echogram_cmap: "RGB"
 
-# Library parameters
-ei: amazomix_3pings_1m  # the survey echointegration on which to work. Choose only one.
-library_name: "test_01" # the name of the library (identifies the labelling and analysis session)
-
-
+# session parameters
+session:
+  ei: amazomix_3pings_1m  # the survey echointegration on which to work. Choose only one.
+  images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
+  library_name: "test_0" # the name of the library (identifies the labelling and analysis session)
