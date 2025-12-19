@@ -71,6 +71,7 @@ class DatasetConfig:
 
     def name(self) -> str:
         freqs = [self.frequencies] if type(self.frequencies) == int else self.frequencies
+        freqs = [int(f) for f in freqs]     # convert to int for cleaner name
         freqs = self.echogram_cmap +'_' + '_'.join(map(str, freqs)) +'kHz_'
         return (
             freqs +

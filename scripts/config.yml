@@ -1,10 +1,12 @@
 # DATA PARAMETERS
+# Main data paths
 paths:
   input_dir: "data/input/netDCF-echointegrations"
   echogram_images_dir: "data/echogram_images"
   interim_dir: "data/interim"
 
 
+# Location of the Sv netCDF files in input_dir
 sv_files:
     abracos1_3pings1m_leg1:
       file: "Abracos_A1/high-res/LEG01/IRD_SOOP-BA_A_20150929T192933Z_ANTEA_FV02_ABRACOS-38-70-120-200_END-20151021T190616Z_C.nc"
@@ -22,6 +24,7 @@ sv_files:
       file: "Amazomix/EI_3pings_1m_leg02/IRD_SOOP-BA_A_20210828T223155Z_ANTEA_FV02_AMAZOMIX2021-38-70-120-200_END-20211008T082151Z_C-20251014T145017Z.nc"
 
 
+# How to aggregate different legs of the same survey
 surveys:
     abracos1_3pings1m: 
       - abracos1_3pings1m_leg1
@@ -35,21 +38,25 @@ surveys:
       - amazomix_3pings1m_leg2_2
 
 
-# WORK PARAMETERS
+# ROI LABELLING PARAMETERS
 # Parameters to build the image dataset for ROI labelling
 image_dataset:
   ei_list:
-    - amazomix_3pings_1m
+    - amazomix_3pings1m
+    - abracos1_3pings1m
+    - abracos2_3pings1m
   time_frame_size: 10000
-  vmin: -90.
+  vmin: -90                 # floats are accepted
   vmax: -50
   z_min_idx: 0
   z_max_idx: -1
   frequencies: [38., 70., 120.]
   echogram_cmap: "RGB"
 
-# session parameters
+
+# Interactive labelling parameters
 session:
-  ei: amazomix_3pings_1m  # the survey echointegration on which to work. Choose only one.
+  ei: amazomix_3pings_1m              # the survey echointegration on which to work. Choose only one.
   images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
-  library_name: "test_0" # the name of the library (identifies the labelling and analysis session)
+  library_name: "test_0"              # the name of the library (identifies the labelling and analysis session)
+
