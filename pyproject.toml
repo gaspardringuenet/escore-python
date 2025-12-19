@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "escore-python"
+version = "0.0.0"
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "."

@@ -1,0 +1,16 @@
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - netcdf4
+  - xarray
+  - dask
+  - ipykernel
+  - jupyter_client[version='<8']
+  - notebook
+  - matplotlib
+  - tqdm
+  - labelme
+  - pyqt
+prefix: /Users/gaspardringuenet/miniforge3/envs/acoustic-communities
