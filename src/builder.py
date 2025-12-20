@@ -7,10 +7,8 @@ from tqdm import tqdm
 from dataclasses import dataclass, asdict
 from pathlib import Path
 import json
-from itertools import product
 
 from src.io import load_survey_ds
-from src.config import load_config
 
 # Sv to Image tools
 

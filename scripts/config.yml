@@ -1,6 +1,9 @@
 # Suggestions for improvements:
 # - put all the data parameters in a "data" field (not sure it's necessary)
-# - clarify the use of 'survey' and 'ei' (currently some confusion in parameters names)
+# - terminology
+#   - clarify the use of 'survey' and 'ei' (currently some confusion in parameters names)
+#   - clarify 'library' and 'session' ==> Decided to ditch library and use session. Also different from labelling session (each 01..py run)
+#   - clarify working directory (to designate the directory were all Escore computation occurs after ROI labelling)
 
 
 # DATA PARAMETERS
@@ -70,7 +73,8 @@ image_dataset:
 
 # Interactive labelling parameters
 session:
-    ei: amazomix_3pings_1m              # the survey echointegration on which to work. Choose only one.
+    name: "test_0"
+    ei: amazomix_3pings1m              # the survey echointegration on which to work. Choose only one.
     images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
-    library_name: "test_0"              # the name of the library (identifies the labelling and analysis session)
+
 
