@@ -73,7 +73,7 @@ image_dataset:
 
 # Interactive labelling parameters
 session:
-    name: "test_0"
+    name: "test_01"
     ei: amazomix_3pings1m              # the survey echointegration on which to work. Choose only one.
     images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
 
