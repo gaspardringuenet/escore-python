@@ -215,7 +215,7 @@ def print_update(conn):
           f"\n * {counts['new']} new",
           f"\n * {counts['modified']} modified",
           f"\n * {counts['deleted']} deleted",
-          f"\n * Total number of ROI's in registry: {n_tot}")
+          f"\n * Total number of ROIs in registry: {n_tot}")
 
 
 def remove_deleted(conn):
@@ -261,3 +261,38 @@ def fetch_ROIs_for_plots(conn, config, plot_dir):
 
     except sqlite3.OperationalError as e:
         print(e)
+
+
+class ROIRegistry:
+    def __init__(self, db_path: Path, root_path: Path):
+        self.db_path = db_path
+        self.root_path = root_path
+        self.conn = self.__open_db__()
+
+    def __open_db__(self):
+        return open_db(self.db_path)
+
+    def update(self, json_dir: Path):
+        update_registry(
+            json_dir=json_dir,
+            conn=self.conn,
+            root_path=self.root_path
+        )
+    
+    def print_update(self):
+        print_update(self.conn)
+
+    def remove_deleted(self):
+        remove_deleted(self.conn)
+
+    def fetch_for_plots(self, config, plot_dir: Path):
+        return fetch_ROIs_for_plots(self.conn, config, plot_dir)
+    
+    def close(self):
+        self.conn.close()
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
