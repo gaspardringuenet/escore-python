@@ -1,4 +1,4 @@
-from src.config import load_config
+from escore.config import load_config
 
 if __name__ == "__main__":
     

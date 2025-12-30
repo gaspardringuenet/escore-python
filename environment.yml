@@ -15,4 +15,5 @@ dependencies:
   - pyqt
   - pyyaml
   - sqlite
+  - dash
 prefix: /Users/gaspardringuenet/miniforge3/envs/acoustic-communities

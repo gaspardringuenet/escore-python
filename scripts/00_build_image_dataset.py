@@ -1,8 +1,8 @@
 from pathlib import Path
-from src.builder import DatasetConfig, build_dataset
+from escore.builder import DatasetConfig, build_dataset
 
 import argparse
-from src.config import load_config
+from escore.config import load_config
 
 
 if __name__ == '__main__':

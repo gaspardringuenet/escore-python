@@ -73,12 +73,12 @@ image_dataset:
 
 # Interactive labelling parameters
 session:
-    name: "test_01"
+    name: "test_0"
     ei: amazomix_3pings1m              # the survey echointegration on which to work. Choose only one.
     images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m # directory in which the ei's image are stored
 
     roi_plots:
-        force_plot: True    # whether to plot even when plot already exists for an ROI
+        force_plot: False    # whether to plot even when plot already exists for an ROI
         vmin: -90           # Not linked
         vmax: -50           # Not linked
         frequencies: [38., 70., 120.]

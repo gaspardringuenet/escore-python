@@ -1,5 +1,5 @@
-from src.config import load_config
-from src.io import load_survey_ds, print_file_infos
+from escore.config import load_config
+from escore.io import load_survey_ds, print_file_infos
 
 if __name__ == "__main__":
     

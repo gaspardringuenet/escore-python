@@ -8,7 +8,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 import json
 
-from src.io import load_survey_ds
+from escore.io import load_survey_ds
 
 # Sv to Image tools
 

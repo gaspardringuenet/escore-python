@@ -233,7 +233,7 @@ def fetch_ROIs_for_plots(conn, config, plot_dir):
             cur = conn.cursor()
 
             if config["session"]["roi_plots"]["force_plot"]:
-                sql = f"SELECT id, points, it_min, it_max, iz_min, iz_max, status FROM roi_registry"
+                sql = "SELECT id, points, it_min, it_max, iz_min, iz_max, status FROM roi_registry"
                 cur.execute(sql)
             else:
                 id_list = [file.stem for file in plot_dir.glob("*.png")] # list the id's of ROI that have already been plotted
@@ -261,6 +261,12 @@ def fetch_ROIs_for_plots(conn, config, plot_dir):
 
     except sqlite3.OperationalError as e:
         print(e)
+
+
+def list_valid_ROI_ids(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM roi_registry WHERE status != 'deleted'")
+    return [id for (id,) in cur.fetchall()]
 
 
 class ROIRegistry:
@@ -296,3 +302,33 @@ class ROIRegistry:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def list_ids(self):
+        return(list_valid_ROI_ids(self.conn))
+    
+
+def registry_row_to_shape(row):
+    shape = {}
+    keys = "id", "points", "it_min", "it_max", "iz_min", "iz_max", "status"
+    for i in range(len(row)):
+        shape[keys[i]] = row[i]
+    shape["points"] = json.loads(shape["points"])
+
+    return shape
+
+
+def get_shape(registry, id):
+    cur = registry.conn.cursor()
+    sql = "SELECT id, points, it_min, it_max, iz_min, iz_max FROM roi_registry WHERE id == ?"
+    cur.execute(sql, (id,))
+    row = cur.fetchone()
+    return registry_row_to_shape(row)
+
+
+if __name__ == "__main__":
+
+    registry_path = Path("data/interim/amazomix_3pings1m/test_01/roi_registry.db")
+    root_path = Path(__file__).resolve().parent.parent.parent
+
+    with ROIRegistry(registry_path, root_path) as registry:
+        print(registry.list_ids())

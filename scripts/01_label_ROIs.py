@@ -2,64 +2,61 @@ from pathlib import Path
 import subprocess
 from datetime import datetime
 import argparse
-import sqlite3
-import json
 
 from tqdm import tqdm
 
-from src.config import load_config
-from src.io import load_survey_ds
-from src.registry import add_shape_ids, ROIRegistry
-from src.visualize import plot_shape
+from escore.config import load_config
+from escore.io import load_survey_ds
+from escore.registry import add_shape_ids, ROIRegistry
+from escore.visualize import plot_shape
 
 
 def main(config):
     # Create paths
     # User inputs
-    images_dir_path = Path(config["session"]["images_dir"])
-    interim_dir_path = Path(config["paths"]["interim_dir"])
+    images_dir = Path(config["session"]["images_dir"])
+    interim_dir = Path(config["paths"]["interim_dir"])
     session_name = config["session"]["name"]
+    ei = config["session"]["ei"]
 
     # Derived paths
-    roi_json_folder_name = 'ROI_' + session_name
-    roi_json_path =   images_dir_path / roi_json_folder_name
-    work_dir_path = interim_dir_path / config["session"]["ei"] / session_name
-    work_dir_plot_path = work_dir_path / 'plots'
-    roi_plot_dir = work_dir_plot_path / 'ROIs_RGB'
-    registry_path = work_dir_path / "roi_registry.db"
+    json_dir = images_dir / ('ROI_' + session_name)
+    work_dir = interim_dir / ei / session_name
+    plot_dir = work_dir / 'plots' / 'ROIs_RGB'
+    registry_path = work_dir / "roi_registry.db"
 
     # Ensure folder paths exist
-    roi_json_path.mkdir(parents=True, exist_ok=True)
-    work_dir_plot_path.mkdir(parents=True, exist_ok=True)
-    roi_plot_dir.mkdir(parents=True, exist_ok=True)
+    json_dir.mkdir(parents=True, exist_ok=True)
+    plot_dir.mkdir(parents=True, exist_ok=True)
 
     # Create new ROI labelling session id
     labelling_session_id = datetime.today().strftime('%Y-%m-%d_%H%M') # for ROI ids
-    print(f"\n**** Current ROI labelling session ****")
-    print(f" - Id:\t\t{labelling_session_id}")
-    print(f" - Name:\t{config['session']['name']}")
-    print(f" - EI:\t\t{config['session']['ei']}")
-    print(f" - RGB images:\t{config['session']['images_dir']}")
 
+    print(f"=== ROI labelling session ===")
+    print(f" - Id:\t\t{labelling_session_id}")
+    print(f" - Name:\t{session_name}")
+    print(f" - EI:\t\t{ei}")
+    print(f" - RGB images:\t{images_dir}")
+    
     # Launch labelme as subprocess
     subprocess.run([
         "labelme",
-        str(images_dir_path),
+        str(images_dir),
         '--output',
-        str(roi_json_path),
+        str(json_dir),
         '--nodata'  # avoids encoding the image in the json file
     ])
 
     # Add id's and update geometry hash
     #print("\nCreating id's for new ROIs.")
-    add_shape_ids(json_dir=roi_json_path, session_id=labelling_session_id, start_id=0)
+    add_shape_ids(json_dir=json_dir, session_id=labelling_session_id, start_id=0)
 
     # Update registry
     print(f"\nUpdating ROI registry file at: {registry_path}")
     with ROIRegistry(db_path=registry_path, root_path=HERE) as registry:
-        registry.update(json_dir=roi_json_path)     # Update the registry
+        registry.update(json_dir=json_dir)     # Update the registry
         registry.print_update()                     # Print an update of new/modified/deleted ROIs
-        roi_shapes = registry.fetch_for_plots(config, plot_dir=roi_plot_dir) # Fetch data from registry for plots
+        roi_shapes = registry.fetch_for_plots(config, plot_dir=plot_dir) # Fetch data from registry for plots
         registry.remove_deleted()                   # Remove deleted shapes from registry
             
     # Save ROI plots in work_dir
@@ -67,9 +64,9 @@ def main(config):
     ds = load_survey_ds(survey=config["session"]["ei"], config=config)
     sv = ds["Sv"]
 
-    print(f"\nPlotting {len(roi_shapes)} ROIs to - {roi_plot_dir}")
+    print(f"\nPlotting {len(roi_shapes)} ROIs to - {plot_dir}")
     for shape in tqdm(roi_shapes, desc="ROIs"):
-        outfile = roi_plot_dir / f"{shape['id']}.png"
+        outfile = plot_dir / f"{shape['id']}.png"
 
         plot_shape(sv, shape, outfile, 
                    padding=config["session"]["roi_plots"]["padding"],
