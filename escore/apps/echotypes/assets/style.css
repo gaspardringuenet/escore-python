@@ -1,0 +1,32 @@
+body {
+    background-color: rgb(177, 177, 177);
+}
+
+#banner {
+    height: 5.5rem;
+    padding: 0rem 2rem 0rem;
+    background-color: white;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+#columns {
+    display: flex;
+    flex-direction: row;
+}
+
+#left-column {
+    width: 30%;
+}
+
+#right-column {
+    width: 70%;
+}
+
+.clustering-param {
+    display: flex;
+    flex-direction: column;
+    width: 20%;
+    padding-right: 2%;
+}
