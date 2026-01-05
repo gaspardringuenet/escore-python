@@ -42,8 +42,12 @@ def get_RGB_fig(
                                         array_shape=(len(sv.time), len(sv.depth)),
                                         window_shape=window_size,
                                         padding=padding)
+    # Compute shape for aspect ratio rendering in app
+    #print(f"Window: {xmin, xmax, ymin, ymax}")
+    window_shape = xmax - xmin + 1, ymax - ymin + 1
+
     # Slice sv using bbox
-    roi_sv = sv.isel(time=slice(xmin, xmax), depth=slice(ymin, ymax)).sel(channel=frequencies)
+    roi_sv = sv.isel(time=slice(xmin, xmax+1), depth=slice(ymin, ymax+1)).sel(channel=frequencies)
 
     # Turn into image format array
     sv_array = roi_sv.values
@@ -59,7 +63,7 @@ def get_RGB_fig(
     fig.add_trace(
         go.Scatter(x=xs, y=ys,
                    mode='markers',
-                   marker=dict(line_color='red', size=10, line_width=3, symbol='x-thin'))
+                   marker=dict(color='red', size=5, symbol='circle'))
     )
 
     # Add mask of selected pixels
@@ -72,7 +76,10 @@ def get_RGB_fig(
             go.Image(z=overlay, colormodel="rgba")
         )
 
-    return fig
+    fig.update_xaxes(range=[0, window_shape[0]], autorange=False)
+    fig.update_yaxes(range=[window_shape[1], 0], autorange=False)
+
+    return fig, window_shape
 
 
 
@@ -85,8 +92,47 @@ def get_Kmeans_labels_fig(
     random_state
 ):
     roi_sv = get_roi_Sv(sv, shape, frequencies)
-    labels_da, kmeans = kmeans_roi_sv(roi_sv, n_clusters, random_state)
+    labels_da, _ = kmeans_roi_sv(roi_sv, n_clusters, random_state)
 
     fig = px.imshow(labels_da.values.T)
+
+    return fig
+
+
+
+def echotype_Sv38_histogram(
+    sv,
+    shape,
+    frequencies,
+    n_clusters,
+    random_state,
+    cluster_id
+):
+    # Perform clustering
+    roi_sv = get_roi_Sv(sv, shape, frequencies)
+    labels_da, _ = kmeans_roi_sv(roi_sv, n_clusters, random_state)
+
+    # Filter Sv based on clustering & select 38 kHz channel
+    mask_da = (labels_da == cluster_id)
+    echotype_sv = roi_sv.where(mask_da).sel(channel=38)
+
+    # Stack spatial dimensions + to numpy
+    X = echotype_sv.stack(pixel=("time", "depth")).values.squeeze()
+
+    # Create fig with plotly express
+    fig = go.Figure()
+
+    fig.add_trace(go.Histogram(
+        x=X,
+        xbins=dict(start=-150., end=-50., size=0.5)
+    ))
+
+    fig.update_layout(
+        title = dict(text='Sv 38 kHz distribution',
+                     x=0.5,
+                     xanchor='center'),
+        xaxis=dict(title='Sv [dB]', range=[-100., -50.]),
+        yaxis=dict(title='Count')
+    )
 
     return fig

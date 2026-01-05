@@ -1,6 +1,10 @@
 from dash import html, dcc
 
 
+GRAPH_ASPECT = 2/1
+
+
+
 def generate_ROI_visual_params_bar():
     visual_type_options = ["ROI mask in context",
                            "ROI data only"]
@@ -35,6 +39,21 @@ def generate_ROI_visual_params_bar():
                     )
                 ]
             ),
+            html.Div(
+                id = "param-visual-window",
+                className= "visual-param",
+                children = [
+                    html.B("Context window"),
+                    html.Div(
+                        children=[html.B("ESDUs"),  dcc.Input(id = "input-win-esdu", value=400, min=100, max=10_000, type="number")],
+                        style = {"display": "flex", "flex-direction": "row"}
+                    ),
+                    html.Div(
+                        children=[html.B("Depth samples"),  dcc.Input(id = "input-win-depth-samples", value=300, min=100, max=700, type="number")],
+                        style = {"display": "flex", "flex-direction": "row"}
+                    )
+                ]
+            ),
         ],
         style = {"display": "flex", "flex-direction": "row"}
     )
@@ -65,7 +84,7 @@ def generate_clustering_params_bar():
                 className= "clustering-param",
                 children = [
                     html.B("Number of classes"),
-                    dcc.Input(id = "input-k", value=2, type='number')
+                    dcc.Input(id = "input-k", value=2, min=1, type='number')
                 ]
             ),
             html.Div(
@@ -76,9 +95,43 @@ def generate_clustering_params_bar():
                     dcc.Dropdown(id = "input-method", options=["K-means"], value="K-means")
                 ]
             ),
+            html.Div(
+                id = "param-freqs",
+                className = "clustering-param",
+                children = [
+                    html.B("Frequencies"),
+                    dcc.Checklist(
+                        id="checklist-freqs",
+                        options=[
+                            {"label": "38 kHz", "value": 38},
+                            {"label": "70 kHz", "value": 70},
+                            {"label": "120 kHz", "value": 120},
+                            {"label": "200 kHz", "value": 200},
+                        ],
+                        value=[38, 70],
+                        inline=True
+                    )
+                ]
+            ),
         ],
         style = {"display": "flex", "flex-direction": "row"}
     )
+
+
+
+def generate_validation_fig_params_bar():
+    return html.Div(
+        id = "valid-params",
+        children = [
+            html.Div(
+                children = [
+                    html.B("Select cluster"),
+                    dcc.Dropdown(id = "input-cluster-id", value=0, options=[0])
+                ]
+            )
+        ]
+    )
+
 
 
 
@@ -117,7 +170,8 @@ def make_layout(roi_ids, intro_text):
                                     html.B("RGB Plot"),
                                     generate_ROI_visual_params_bar(),
                                     html.Hr(),
-                                    dcc.Graph(id="rgb-plot-fig"),
+                                    dcc.Graph(id="rgb-plot-fig",
+                                              style={"aspect-ratio": str(GRAPH_ASPECT)}),
                                     generate_dB_slider(),
                                 ]
                             ),
@@ -136,6 +190,7 @@ def make_layout(roi_ids, intro_text):
                                 id = "echo-type validation",
                                 children = [
                                     html.B("Echo-type validation"),
+                                    generate_validation_fig_params_bar(),
                                     html.Hr(),
                                     dcc.Graph(id="echo-type-valid-fig"),
                                 ],

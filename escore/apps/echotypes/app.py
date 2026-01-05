@@ -15,9 +15,7 @@ def create_app(sv, registry_path, root_path, roi_ids):
     )
 
     intro_text = f"""
-    Next things we'd like to do:
-    - [x]   Be able to change the ROI with a Dropdown menu of ROIs.
-    - [ ]   Show the ROI on the RGB plot.
+    This app is designed for the interactive selection of *echo-types*' pixels in pre-selected *regions of interest* (ROI).
     """
 
     app.layout = make_layout(roi_ids, intro_text)

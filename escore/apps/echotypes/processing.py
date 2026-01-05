@@ -62,10 +62,11 @@ def get_window(
         half_h_top = win_h // 2
         half_h_bottom = win_h - half_h_top
 
-        xmin = x_center - half_w_left
-        xmax = x_center + half_w_right
-        ymin = y_center - half_h_top
-        ymax = y_center + half_h_bottom
+        #print(f"win_w%2: {win_w%2} | win_h%2: {win_h%2}")
+        xmin = x_center - half_w_left + (1 - win_w % 2)
+        xmax = x_center + half_w_right - win_w % 2
+        ymin = y_center - half_h_top + (1 - win_h % 2)
+        ymax = y_center + half_h_bottom - win_h % 2
 
         # Shift window to stay inside array
         if xmin < 0:
@@ -123,7 +124,10 @@ def mask_from_polygon(mask_shape, points):
 
 
 
-def get_mask(window: tuple[int, int, int, int], points: list):
+def get_mask(
+    window: tuple[int, int, int, int],
+    points: list
+):
     """Returns a boolean mask of pixels contained within a shape delimited by an ordered list of points.
 
     Args:
@@ -141,31 +145,35 @@ def get_mask(window: tuple[int, int, int, int], points: list):
     points = np.array([[p[0]-xmin, p[1]-ymin] for p in points])
 
     # Create mask
-    mask_shape = (xmax-xmin, ymax-ymin)
+    mask_shape = (xmax-xmin+1, ymax-ymin+1)
     if len(points)==2:
         mask = mask_from_rectangle(mask_shape, points)
         
     elif len(points) > 2:
         mask = mask_from_polygon(mask_shape, points)
     
-    else:                   # 1 or 0 points are ignored: return an empty mask
-        pass
+    else:
+        pass # 1 or 0 points are ignored: return an empty mask
 
     return mask
 
 
 
-def get_roi_Sv(sv: xr.DataArray, shape: dict, frequencies=[38, 70, 120, 200]):
+def get_roi_Sv(
+    sv: xr.DataArray,
+    shape: dict, 
+    frequencies=[38, 70, 120, 200]
+):
     # Fetch shape points
     points = np.array(shape["points"])
     bbox = shape["it_min"], shape["it_max"], shape["iz_min"], shape["iz_max"]
     xmin, xmax, ymin, ymax = bbox
 
     # Slice sv using bbox (avoids hard loading all the sv values)
-    bbox_sv = sv.isel(time=slice(xmin, xmax), depth=slice(ymin, ymax)).sel(channel=frequencies)
+    bbox_sv = sv.isel(time=slice(xmin, xmax+1), depth=slice(ymin, ymax+1)).sel(channel=frequencies)
 
     # Get mask
-    mask = get_mask(window=bbox, points=points) 
+    mask = get_mask(window=bbox, points=points)
 
     # Convert mask to DataArray
     mask_da = xr.DataArray(
@@ -188,21 +196,12 @@ def kmeans_roi_sv(
 ):
     # Stack spatial dimensions
     stacked = roi_sv.stack(pixel=("time", "depth"))
-    print(f"\nstacked.values:\n{stacked.values}")
-    print(f"\nAll NA: {np.all(np.isnan(stacked.values))}")
-    print(f"\nAll NA channel 0: {np.all(np.isnan(stacked[0].values))}")
-    print(f"\nAll NA channel 1: {np.all(np.isnan(stacked[1].values))}")
-    print(f"\nAll NA channel 2: {np.all(np.isnan(stacked[2].values))}")
 
     # Drop pixels with NaNs
     stacked = stacked.dropna(dim="pixel", how="any")
-    print(f"\nAfter dropping NAs:\n{stacked.values}")
 
     # (n_pixels, n_channels)
     X = stacked.transpose("pixel", "channel").values
-    print(f"\nX:\n{X}")
-    print()
-    print()
 
     # Run clustering
     kmeans = KMeans(
