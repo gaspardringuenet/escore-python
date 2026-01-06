@@ -6,7 +6,7 @@ import xarray as xr
 from escore.registry import ROIRegistry, get_shape
 from .processing import get_roi_Sv, cluster_roi
 from .figures import get_RGB_fig, get_clustering_labels_fig, echotype_deltaSv_histograms
-from .layout import GRAPH_ASPECT
+from .layout_main import GRAPH_ASPECT
 
 
 def register_callbacks(app, sv, registry_path, root_path):

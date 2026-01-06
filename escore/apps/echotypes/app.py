@@ -1,7 +1,7 @@
 from pathlib import Path
 from dash import Dash
 
-from .layout import make_layout
+from .layout_main import make_layout
 from .callbacks import register_callbacks
 
 
