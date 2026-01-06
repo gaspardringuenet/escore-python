@@ -88,11 +88,17 @@ def generate_clustering_params_bar():
                 ]
             ),
             html.Div(
-                id = "param-method",
                 className= "clustering-param",
                 children = [
                     html.B("Method"),
-                    dcc.Dropdown(id = "input-method", options=["K-means"], value="K-means")
+                    dcc.Dropdown(id = "dropdown-method", options=["KMeans", "GMM"], value="KMeans")
+                ]
+            ),
+            html.Div(
+                className= "clustering-param",
+                children = [
+                    html.B("Features"),
+                    dcc.Dropdown(id = "dropdown-features", options=["Sv", "Delta Sv"], value="Delta Sv")
                 ]
             ),
             html.Div(
@@ -139,6 +145,9 @@ def make_layout(roi_ids, intro_text):
     layout = html.Div(
         id = "app-container",
         children = [
+            # Store data
+            #dcc.Store(id='sv-shape-store', storage_type='memory'),
+            dcc.Store(id='labels-da-store', storage_type='memory'),
             # Banner
             html.Div(
                 id = "banner",

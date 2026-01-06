@@ -1,6 +1,9 @@
 import numpy as np
+import pandas as pd
+
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from skimage.draw import polygon
 
@@ -83,16 +86,7 @@ def get_RGB_fig(
 
 
 
-
-def get_Kmeans_labels_fig(
-    sv,
-    shape,
-    frequencies,
-    n_clusters,
-    random_state
-):
-    roi_sv = get_roi_Sv(sv, shape, frequencies)
-    labels_da, _ = kmeans_roi_sv(roi_sv, n_clusters, random_state)
+def get_clustering_labels_fig(labels_da: xr.DataArray):
 
     fig = px.imshow(labels_da.values.T)
 
@@ -100,39 +94,134 @@ def get_Kmeans_labels_fig(
 
 
 
-def echotype_Sv38_histogram(
-    sv,
-    shape,
-    frequencies,
-    n_clusters,
-    random_state,
-    cluster_id
-):
-    # Perform clustering
-    roi_sv = get_roi_Sv(sv, shape, frequencies)
-    labels_da, _ = kmeans_roi_sv(roi_sv, n_clusters, random_state)
+def mean_and_sd_lineplot(df, line_name, line_color="red"):
 
+    data = [
+        go.Scatter(
+            name=line_name,
+            x=df["channel"],
+            y=df["mean"],
+            marker=dict(color=line_color)
+        ),
+        go.Scatter(
+            name="Upper Bound",
+            x=df["channel"],
+            y=df["mean"]+df["sd"],
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False
+        ),
+        go.Scatter(
+            name="Lower Bound",
+            x=df["channel"],
+            y=df["mean"]-df["sd"],
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor='rgba(68, 68, 68, 0.3)',
+            showlegend=False
+        )
+    ]
+
+    return data
+
+
+
+def echotype_deltaSv_histograms(
+    roi_sv,
+    labels_da,
+    cluster_id,
+    ref_frequency=38.
+):
+    
     # Filter Sv based on clustering & select 38 kHz channel
     mask_da = (labels_da == cluster_id)
-    echotype_sv = roi_sv.where(mask_da).sel(channel=38)
+    echotype_sv = roi_sv.where(mask_da)
+
+    # Compute delta Sv
+    echotype_delta_sv = compute_delta_sv(echotype_sv, ref_frequency)
 
     # Stack spatial dimensions + to numpy
-    X = echotype_sv.stack(pixel=("time", "depth")).values.squeeze()
+    X = stack_pixels(
+        echotype_delta_sv.squeeze("reference_frequency", drop=True)
+    ).values # shape (n_pixels, n_channels)
 
-    # Create fig with plotly express
-    fig = go.Figure()
-
-    fig.add_trace(go.Histogram(
-        x=X,
-        xbins=dict(start=-150., end=-50., size=0.5)
-    ))
-
-    fig.update_layout(
-        title = dict(text='Sv 38 kHz distribution',
-                     x=0.5,
-                     xanchor='center'),
-        xaxis=dict(title='Sv [dB]', range=[-100., -50.]),
-        yaxis=dict(title='Count')
+    # Create fig with subplots
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        specs= [[{"colspan": 2}, None],
+                [{}, {}]]
     )
+
+    # Add traces
+    # Histograms of delta Sv
+    for c in range(X.shape[1]):
+
+        fig.add_trace(
+            go.Histogram(
+            x=X[:, c],
+            xbins=dict(start=-50., end=50., size=0.5),
+            histnorm="probability",
+            opacity=0.5,
+            name=f"ΔSv {echotype_delta_sv.channel.values[c]} kHz - {echotype_delta_sv.reference_frequency.values[0]} kHz"
+            ),
+            row=1,
+            col="all"
+        )
+
+    # Relative frequency response curve
+    df = pd.DataFrame({
+        "channel": echotype_delta_sv.channel.values,
+        "mean": X.mean(axis=0),
+        "sd": X.std(axis=0)
+    })
+    ref_freq_row = pd.DataFrame([[ref_frequency, 0, 0]], columns=df.columns)
+    df = pd.concat([ref_freq_row, df], ignore_index=True)  
+
+    fig.add_traces(
+        data=mean_and_sd_lineplot(df, 
+                                  line_name=f"Frequency response rel. {ref_frequency}"),
+        rows=2,
+        cols=1
+    )
+
+    # Frequency response curve
+    X = stack_pixels(echotype_sv).values
+    df = pd.DataFrame({
+        "channel": echotype_sv.channel.values,
+        "mean": X.mean(axis=0),
+        "sd": X.std(axis=0)
+    })
+
+    fig.add_traces(
+        data=mean_and_sd_lineplot(df, 
+                                  line_name=f"Absolute frequency response",
+                                  line_color="blue"),
+        rows=2,
+        cols=2
+    )
+
+    # Layout
+    fig.update_layout(
+        barmode="overlay",
+        #title = dict(text='Delta Sv distribution',
+        #             x=0.5,
+        #             xanchor='center'),
+        xaxis1=dict(title='ΔSv [dB]',
+                    range=[-30., 30.]),
+        yaxis1=dict(title='Probability'),
+        xaxis2=dict(title='Sampling frequency [kHz]',
+                    range=[38-10, 200+10]),
+        yaxis2=dict(title='ΔSv [dB]',
+                    range=[-30, 30]),
+        xaxis3=dict(title='Sampling frequency [kHz]',
+                    range=[38-10, 200+10]),
+        yaxis3=dict(title='Sv [dB]',
+                    range=[-90, -55]),
+        showlegend=True
+    )
+    
+    #print(fig)
 
     return fig

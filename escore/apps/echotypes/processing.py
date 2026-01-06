@@ -1,6 +1,8 @@
 import numpy as np
 import xarray as xr
+
 from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
 
 from skimage.draw import polygon
 
@@ -189,36 +191,116 @@ def get_roi_Sv(
 
 
 
-def kmeans_roi_sv(
-    roi_sv: xr.DataArray,
-    n_clusters: int, 
-    random_state: int=0
-):
+def compute_delta_sv(
+    sv: xr.DataArray,
+    ref_frequency: float
+) -> xr.DataArray:
+    """Subtract a reference channel to volume backscattering (Sv) values contained in the other channels of sv.
+    Computes ΔSv_ref = Sv(channel) - Sv(ref) for all channels.
+
+    Args:
+        sv (xr.DataArray): multi-frequency Sv data with a 'channel' dimension.
+        ref_frequency (float): reference channel coordinate.
+
+    Returns:
+        xr.DataArray: DataArray of same shape as sv, except for one less on the channel dimension. channel coords are renamed.
+    """
+    
+    if "channel" not in sv.dims:
+        raise ValueError("Input DataArray must have a 'channel' dimension.")
+    
+    if sv.sizes["channel"] < 2:
+        raise ValueError(
+            f"At least 2 frequency channels are required for r(f) clustering: {sv.sizes['channel']} available."
+        )
+
+    try:
+        sv_ref = sv.sel(channel=ref_frequency)
+    except KeyError:
+        raise ValueError(
+            f"Reference frequency {ref_frequency} kHz does not match available frequencies:"
+            f"{sv.channel.values}"
+        )
+    
+    sv_other = sv.drop_sel(channel=ref_frequency)
+
+    delta_sv = sv_other - sv_ref
+
+    # Rename variable
+    delta_sv = delta_sv.rename("Delta Sv")
+
+    # Add a dimension for reference frequency (channels are kept identical)
+    delta_sv = delta_sv.expand_dims(
+        reference_frequency= np.array([ref_frequency], dtype=np.float64)
+    )
+
+    # Add metadata
+    delta_sv.reference_frequency.attrs.update({
+        "units": "kHz",
+        "long_name": "Reference frequency"
+    })
+
+    return delta_sv
+
+
+
+def stack_pixels(da: xr.DataArray):
+
     # Stack spatial dimensions
-    stacked = roi_sv.stack(pixel=("time", "depth"))
+    stacked = da.stack(pixel=("time", "depth"))
 
     # Drop pixels with NaNs
     stacked = stacked.dropna(dim="pixel", how="any")
 
-    # (n_pixels, n_channels)
-    X = stacked.transpose("pixel", "channel").values
+    # shape to (n_pixels, n_channels) as expected by most clustering algorithms
+    stacked = stacked.transpose("pixel", "channel")
+
+    return stacked # Contains the necessary information for unstacking
+
+
+
+def cluster_roi(
+    roi_sv: xr.DataArray,
+    features: str,
+    method: str,
+    n_clusters: int, 
+    ref_frequency: float,
+    random_state: int=0,
+):
+    
+    # Create clustering model
+    if method == "KMeans":
+        model = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
+    elif method == "GMM":
+        model = GaussianMixture(n_components=n_clusters, random_state=random_state)
+    else:
+        raise ValueError(f"Clustering method must be one of ['KMeans', 'GMM']. Current input: '{method}'")
+
+    # Get the right variables (Sv or Delta Sv)
+    if features == "Sv":
+        data = roi_sv
+    
+    elif features == "Delta Sv":
+        data = compute_delta_sv(roi_sv, ref_frequency)
+        data = data.squeeze("reference_frequency", drop=True) # remove reference frequency dim for use in stack_pixels
+    
+    else:
+        raise ValueError(f"Clustering features must be one of ['Sv', 'Delta Sv']. Current input: '{features}'")
+
+    # Stack pixels of data into clustering compatible format
+    X = stack_pixels(data)
 
     # Run clustering
-    kmeans = KMeans(
-        n_clusters=n_clusters,
-        random_state=random_state,
-        n_init="auto"
-    )
-    labels = kmeans.fit_predict(X)
+    labels = model.fit_predict(X.values)
 
     # Create label DataArray
     labels_pixel = xr.DataArray(
         labels,
         dims="pixel",
-        coords={"pixel": stacked.pixel}
+        coords={"pixel": X.pixel}
     )
 
     # Unstack to (time, depth)
     labels_da = labels_pixel.unstack("pixel")
-
-    return labels_da, kmeans
+    
+    return labels_da, model

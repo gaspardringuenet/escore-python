@@ -8,12 +8,12 @@ The Escore algorithm is described by Annasawmy et al. (2024). DOI - https://doi.
 - [x] ROI labelling module
   - [x] Creating a dataset of pre-printed RGB images (`scripts/00_build_image_dataset.py`)
   - [x] Label using `labelme` (`scripts/01_label_ROIs.py`)
-    - [ ] Track ROI shapes in a database with `SQLite`
+    - [x] Track ROI shapes in a database with `SQLite`
 - [ ] Echo-type extraction module (Plotly / Dash app.)
   - [x] Visualize `labelme` shapes.
-    - [ ] Bug : when padding==0, last row and column of mask are not shown.
+    - [x] Bug : when padding==0, last row and column of mask are not shown.
   - [ ] Perform K-means clustering
-    - [ ] Make sure we cluster the right features (vector of Sv or r(f))
+    - [ ] Clustering of frequency response (r(f))
     - [ ] 
     - [ ] Handle number of channels available
       - [ ] For ROI in one frequency validity range
