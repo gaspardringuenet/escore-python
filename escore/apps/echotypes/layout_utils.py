@@ -1,70 +1,18 @@
 from dash import html, dcc
 
-def generate_ROI_visual_params_bar():
-    visual_type_options = ["ROI mask in context",
-                           "ROI data only"]
-    
-    #mask_alpha_in
-    #mask_alpha_out
-    #context_window_size
+import dash_bootstrap_components as dbc
 
-    return html.Div(
-        id = "roi-visual-params",
-        children = [
-            html.Div(
-                id = "param-visual-type",
-                className= "visual-param",
-                children = [
-                    html.B("Visualization type"),
-                    dcc.Dropdown(id = "dd-visual-type", options=visual_type_options, value=visual_type_options[0])
-                ]
-            ),
-            html.Div(
-                id = "param-visual-alpha",
-                className= "visual-param",
-                children = [
-                    html.B("Mask params"),
-                    html.Div(
-                        children=[html.B("Alpha in"),  dcc.Input(id = "input-alpha-in", value=0.3)],
-                        style = {"display": "flex", "flex-direction": "row"}
-                    ),
-                    html.Div(
-                        children=[html.B("Alpha out"),  dcc.Input(id = "input-alpha-out", value=0.)],
-                        style = {"display": "flex", "flex-direction": "row"}
-                    )
-                ]
-            ),
-            html.Div(
-                id = "param-visual-window",
-                className= "visual-param",
-                children = [
-                    html.B("Context window"),
-                    html.Div(
-                        children=[html.B("ESDUs"),  dcc.Input(id = "input-win-esdu", value=400, min=100, max=10_000, type="number")],
-                        style = {"display": "flex", "flex-direction": "row"}
-                    ),
-                    html.Div(
-                        children=[html.B("Depth samples"),  dcc.Input(id = "input-win-depth-samples", value=300, min=100, max=700, type="number")],
-                        style = {"display": "flex", "flex-direction": "row"}
-                    )
-                ]
-            ),
-        ],
-        style = {"display": "flex", "flex-direction": "row"}
-    )
 
 
 def generate_dB_slider():
     return html.Div(
-        id = "slider-db",
-        className= "acou-plot-param",
         children = [
-            html.B("dB thresholds"),
             dcc.RangeSlider(id = "db-slider",
                             min=-120, max=0, step=1, 
                             marks={i:f"{i} dB" for i in range(-120, 0, 10)},
                             count=1,
                             value=[-90, -50],
+                            vertical = True,
                             tooltip={"placement": "bottom", "always_visible": True})
         ]
     )
@@ -133,3 +81,111 @@ def generate_validation_fig_params_bar():
         ]
     )
 
+
+
+
+# BOOTSTRAPS FOR RGB PLOT PARAMS
+
+def generate_ROI_visual_params_bar():
+
+    visual_type_options = [
+        "ROI mask in context",
+        "ROI data only",
+    ]
+
+    return dbc.Card(
+        dbc.CardBody(
+            dbc.Row(
+                [
+                    # --- Visualization type ---
+                    dbc.Col(
+                        [
+                            dbc.Label("Visualization type"),
+                            dcc.Dropdown(
+                                id="dd-visual-type",
+                                options=visual_type_options,
+                                value=visual_type_options[0],
+                                clearable=False,
+                            ),
+                        ],
+                        width=4,
+                    ),
+
+                    # --- Mask params ---
+                    dbc.Col(
+                        [
+                            dbc.Label("Mask"),
+                            dbc.InputGroup(
+                                [
+                                    dbc.InputGroupText("Alpha in", className="input-button"),
+                                    dbc.Input(
+                                        id="input-alpha-in",
+                                        type="number",
+                                        value=0.3,
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        className="input-button"
+                                    ),
+                                ],
+                                className="mb-2",
+                            ),
+                            dbc.InputGroup(
+                                [
+                                    dbc.InputGroupText("Alpha out", className="input-button"),
+                                    dbc.Input(
+                                        id="input-alpha-out",
+                                        type="number",
+                                        value=0.0,
+                                        min=0,
+                                        max=1,
+                                        step=0.01,
+                                        className="input-button"
+                                    ),
+                                ],
+                            ),
+                        ],
+                        width=4,
+                    ),
+
+                    # --- Context window ---
+                    dbc.Col(
+                        [
+                            dbc.Label("Context window"),
+                            dbc.InputGroup(
+                                [
+                                    dbc.InputGroupText("ESDUs", className="input-button"),
+                                    dbc.Input(
+                                        id="input-win-esdu",
+                                        type="number",
+                                        value=400,
+                                        min=100,
+                                        max=10_000,
+                                        className="input-button"
+                                    ),
+                                ],
+                                className="mb-2",
+                            ),
+                            dbc.InputGroup(
+                                [
+                                    dbc.InputGroupText("Depth", className="input-button"),
+                                    dbc.Input(
+                                        id="input-win-depth-samples",
+                                        type="number",
+                                        value=300,
+                                        min=100,
+                                        max=700,
+                                        className="input-button"
+                                    ),
+                                ],
+                            ),
+                        ],
+                        width=4,
+                    ),
+                ],
+                className="g-3",
+            )
+        ),
+        className="mb-3",
+        style={"height": "100%"}
+    )

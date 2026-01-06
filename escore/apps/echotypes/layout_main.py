@@ -2,81 +2,185 @@ from dash import html, dcc
 
 from .layout_utils import *
 
-GRAPH_ASPECT = 2/1
-
-def make_layout(roi_ids, intro_text):
-    layout = html.Div(
-        id = "app-container",
-        children = [
-
-            # Store data
-            #dcc.Store(id='sv-shape-store', storage_type='memory'),
-            dcc.Store(id='labels-da-store', storage_type='memory'),
+GRAPH_ASPECT = 4/3
 
 
-            # Banner
+def make_left_pannel():
+
+    return html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(24, 1fr)",
+            "gridTemplateRows": "repeat(24, 1fr)",
+            "height": "100%",
+            "width": "100%",
+            "gap": "10px",
+            "overflow": "auto",
+        },
+        children=[
             html.Div(
-                id = "banner",
-                children = [html.H2("Echo-types Selection App"),]
+                generate_ROI_visual_params_bar(),
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "1 / 4",
+                    "background": "#ddd"
+                }
             ),
 
-            
             html.Div(
-                id = "columns",
-                children = [
-                    # Left column
-                    html.Div(
-                        id = "left-column",
-                        children = [
-                            dcc.Markdown(intro_text),
-                            dcc.Dropdown(
-                                roi_ids,
-                                roi_ids[0],
-                                id="dropdown-roi-selection"
-                            )
-                        ]
-                    ),
-                    # Right column
-                    html.Div(
-                        id = "right-column",
-                        children = [
-                            # RGB plot of ROI
-                            html.Div(
-                                id = "rgb",
-                                children = [
-                                    html.B("RGB Plot"),
-                                    generate_ROI_visual_params_bar(),
-                                    html.Hr(),
-                                    dcc.Graph(id="rgb-plot-fig",
-                                              style={"aspect-ratio": str(GRAPH_ASPECT)}),
-                                    generate_dB_slider(),
-                                ]
-                            ),
-                            # Clustering result
-                            html.Div(
-                                id = "clustering",
-                                children = [
-                                    html.B("Clustering of ESU by r(f)"),
-                                    generate_clustering_params_bar(),
-                                    html.Hr(),
-                                    dcc.Graph(id="clustering-plot-fig"),
-                                ],
-                            ),
-                            # Validation
-                            html.Div(
-                                id = "echo-type validation",
-                                children = [
-                                    html.B("Echo-type validation"),
-                                    generate_validation_fig_params_bar(),
-                                    html.Hr(),
-                                    dcc.Graph(id="echo-type-valid-fig"),
-                                ],
-                            )
-                        ]
-                    )
-                ]
+                dcc.Graph(id="rgb-plot-fig"),
+                style={
+                    "gridColumn": "1 / 23",
+                    "gridRow": "4 / 14",
+                    "background": "#ddd"
+                }
+            ),
+
+            html.Div(
+                generate_dB_slider(),
+                style={
+                    "gridColumn": "23 / -1",
+                    "gridRow": "4 / 14",
+                    "background": "#ddd",
+                }
+            ),
+
+            html.Div(
+                "Dist plots",
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "14 / -1",
+                    "background": "#ddd"
+                }
+            ),
+
+        ]
+    )
+
+
+def make_right_pannel():
+
+    return html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(12, 1fr)",
+            "gridTemplateRows": "repeat(24, 1fr)",
+            "height": "100%",
+            "width": "100%",
+            "gap": "10px",
+            "overflow": "auto",
+        },
+        children=[
+            html.Div(
+                "Clustering Params",
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "1 / 4",
+                    "background": "#ddd"
+                }
+            ),
+
+            html.Div(
+                "Clustering Plot",
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "4 / 13",
+                    "background": "#ddd"
+                }
+            ),
+
+            html.Div(
+                "Dist Plots",
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "13 / 21",
+                    "background": "#ddd"
+                }
+            ),
+
+            html.Div(
+                "Save Buttons",
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "21 / -1",
+                    "background": "#ddd"
+                }
             ),
         ]
     )
 
-    return layout
+
+def make_layout(roi_ids, intro_text):
+
+    return html.Div(
+        style={
+            "display": "grid",
+            "gridTemplateColumns": "repeat(100, 1fr)",
+            "gridTemplateRows": "repeat(100, 1fr)",
+            "height": "100vh",
+            "gap": "10px",
+        },
+        children=[
+
+            # Store data in memory
+            dcc.Store(id='labels-da-store', storage_type='memory'),
+
+
+            # Main layout
+
+            # Banner
+            html.Div(
+                html.H3("Echo-types Selection App"),
+                style={
+                    "gridColumn": "1 / -1",
+                    "gridRow": "1 / 5",
+                    "background": "#ddd",
+                },
+            ),
+
+            # Working session info pannel
+            html.Div(
+                "Session info etc.",
+                style={
+                    "gridColumn": "1 / 30",
+                    "gridRow": "5 / 25",
+                    "background": "#ddd",
+                    "minHeight": 0,
+                },
+            ),
+
+            # Overflowing data table for ROI selection / Echo-types tracking
+            html.Div(
+                ["ROI/Echo-types table", dcc.Dropdown(roi_ids, roi_ids[0], id="dropdown-roi-selection")],
+                style={
+                    "gridColumn": "30 / -1",
+                    "gridRow": "5 / 25",
+                    "background": "#ddd",
+                },
+            ),
+
+            # Left pannel containing ROI information
+            html.Div(
+                make_left_pannel(),
+                style={
+                    "gridColumn": "1 / 50",
+                    "gridRow": "25 / -1",
+                    "background": "#bbb",
+                    "padding": "10px"
+                },
+            ),
+
+
+            # Right pannel containing clustering and echo-type info, as well as save buttons
+            html.Div(
+                make_right_pannel(),
+                style={
+                    "gridColumn": "50 / -1",
+                    "gridRow": "25 / -1",
+                    "background": "#bbb",
+                    "padding": "10px"
+                },
+            ),
+
+        ],
+    )

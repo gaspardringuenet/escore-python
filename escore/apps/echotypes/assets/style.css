@@ -24,13 +24,11 @@ body {
     width: 70%;
 }
 
-.clustering-param {
-    display: flex;
-    flex-direction: column;
-    width: 20%;
-    padding-right: 2%;
+.mb-3 {
+    font-size: 0.8rem;
+    padding: 0px;
 }
 
-.visual-param{
-    padding-right: 2%;
+.input-button{
+    font-size: 0.6rem;
 }

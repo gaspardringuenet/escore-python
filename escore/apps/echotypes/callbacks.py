@@ -24,9 +24,9 @@ def register_callbacks(app, sv, registry_path, root_path):
     )
     def update_visual_params(type):
         if type == "ROI mask in context":
-            return 0., 0.5, 600, False, 300, False
+            return 0., 0.5, 400, False, 300, False
         if type == "ROI data only":
-            return 0., 1,  600, True, 300, True
+            return 0., 1,  400, True, 300, True
         
 
     @app.callback(
@@ -67,9 +67,9 @@ def register_callbacks(app, sv, registry_path, root_path):
 
         # Make sur the image is properly stretched to the dcc.Graph aspect ratio
         fig.update_layout({
-            'paper_bgcolor': 'yellow',
+            'paper_bgcolor': 'white',
             'plot_bgcolor': 'pink',
-            'margin': {"b": 0, "t": 0, "l": 0, "r": 0},
+            'margin': {"b": 0, "t": 10, "l": 0, "r": 0},
             'xaxis': {
                 'scaleanchor': 'y',
                 'scaleratio': h/w * GRAPH_ASPECT,
