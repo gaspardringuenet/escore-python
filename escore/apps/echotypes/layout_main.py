@@ -8,14 +8,19 @@ def make_layout(roi_ids, intro_text):
     layout = html.Div(
         id = "app-container",
         children = [
+
             # Store data
             #dcc.Store(id='sv-shape-store', storage_type='memory'),
             dcc.Store(id='labels-da-store', storage_type='memory'),
+
+
             # Banner
             html.Div(
                 id = "banner",
                 children = [html.H2("Echo-types Selection App"),]
             ),
+
+            
             html.Div(
                 id = "columns",
                 children = [

@@ -16,5 +16,6 @@ dependencies:
   - pyyaml
   - sqlite
   - dash
+  - dash-bootstrap-component
   - scikit-image
 prefix: /Users/gaspardringuenet/miniforge3/envs/acoustic-communities
