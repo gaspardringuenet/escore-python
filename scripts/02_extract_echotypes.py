@@ -45,4 +45,3 @@ if __name__ == '__main__':
 
     # Execute main
     main(config)
-
