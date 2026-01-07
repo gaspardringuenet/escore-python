@@ -9,9 +9,9 @@
 # DATA PARAMETERS
 # Main data paths
 paths:
-    input_dir: "data/input/netCDF-echointegrations"
-    echogram_images_dir: "data/echogram_images"
-    interim_dir: "data/interim"
+    input_dir: "data-perso/input/netCDF-echointegrations"
+    echogram_images_dir: "data-perso/echogram_images"
+    interim_dir: "data-perso/interim"
 
 
 # Location of the Sv netCDF files in input_dir

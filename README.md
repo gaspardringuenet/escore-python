@@ -4,8 +4,39 @@ The Escore algorithm is described by Annasawmy et al. (2024). DOI - https://doi.
 
 ## Installation guide
 
-```
+```bash
+conda create --prefix ./env python=3.11
+conda activate ./env
 conda install --file environment.yml
+```
+
+## Quick tour
+
+```bash
+├── data                            # data folders - configs create subfolders in those 3
+│   ├── echogram_images             # echogram images (and labelme JSON) folder
+│   ├── input                       # input folder (place .nc here)
+│   └── interim                     # 'work' folder
+├── environment.yml                 # conda environment config file
+├── escore                          # tools package
+│   ├── __init__.py
+│   ├── __pycache__
+│   ├── apps                        # interactive Dash apps
+│   ├── builder.py
+│   ├── config.py
+│   ├── io.py
+│   ├── registry.py
+│   ├── test
+│   └── visualize.py
+├── pyproject.toml
+└── scripts                         # scripts corresponding to the steps of the analysis
+    ├── 00_build_image_dataset.py
+    ├── 01_label_ROIs.py
+    ├── 02_extract_echotypes.py
+    ├── config.yml                  # default config file (my own)
+    ├── config_empty.yml            # to be added
+    ├── config_test_from_start.yml  # in writing
+    └── config_test_with_ROIs.yml   # to be added
 ```
 
 ## Minimal launch on test data
@@ -24,9 +55,11 @@ In order to open an interactive labelling window, the user must call the second 
 $ python scripts/01_label_ROIs.py --config scripts/config_test_from_start.yml
 ```
 
+For now, this step requires the path to the image folder to be correctly specified in the `session.images_dir` field of the configuration file.
+
 No special labelme "label" is required. After creating an ROI shape, the user can save it in labelme (with `CRTL+S`). When no previous shape has been saved for this image[^1], a saving window opens. In that case *save the JSON file in the propose folder*.
 
-[^1]: The user can also create a new ROI library on the same image dataset by changing the `session.name` in `scripts/config_test_from_start.yml`.
+[^1]: The user can also create a new ROI library on the same image dataset by changing the `session.name` field in `scripts/config_test_from_start.yml`.
 
 
 ### 2. Extract echo-types from ROI's

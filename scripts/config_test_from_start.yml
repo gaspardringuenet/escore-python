@@ -1,0 +1,60 @@
+# Suggestions for improvements:
+# - put all the data parameters in a "data" field (not sure it's necessary)
+# - terminology
+#   - clarify the use of 'survey' and 'ei' (currently some confusion in parameters names)
+#   - clarify 'library' and 'session' ==> Decided to ditch library and use session. Also different from labelling session (each 01..py run)
+#   - clarify working directory (to designate the directory were all Escore computation occurs after ROI labelling)
+
+
+# DATA PARAMETERS
+# Main data paths
+paths:
+    input_dir: "data/input/netCDF-echointegrations"
+    echogram_images_dir: "data/echogram_images"
+    interim_dir: "data/interim"
+
+
+# Location of the Sv netCDF files in input_dir
+# leg_id allows the concatenation of sv_files from the same survey into a single xarray.Dataset
+# Data from each file can then be identified using the new "leg" Dataset dimension
+sv_files:
+    test_data:
+      leg_id: leg1
+      file: "amazomix_3pings1m_subset.nc" # path inside paths.input-dir
+
+
+# How to aggregate sv_file of the same survey.
+surveys:
+    abracos1_3pings1m_test: 
+      - test_data      # No convention required for naming, but must correspond to an sv_file element.
+      # Other surveys or survey parts can be added if necessary
+
+
+
+# ROI LABELLING PARAMETERS
+# Parameters to build the image dataset for ROI labelling
+image_dataset:
+    ei_list:
+      - amazomix_3pings1m_test
+    time_frame_size: 10000
+    vmin: -90.                 # floats are accepted
+    vmax: -50.
+    z_min_idx: 0
+    z_max_idx: -1
+    frequencies: [38., 70., 120.]
+    echogram_cmap: "RGB"
+
+
+# Interactive labelling parameters
+session:
+    name: "labelling_session_test_0"        # Choose any name
+    ei: amazomix_3pings1m_test              # the survey echointegration on which to work. Choose only one.
+    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m_test        # directory in which the ei's image are stored
+
+    roi_plots:
+        force_plot: False    # whether to plot even when plot already exists for an ROI
+        vmin: -90           # Not linked
+        vmax: -50           # Not linked
+        frequencies: [38., 70., 120.]
+        padding: 20         # padding around ROI, in number of pixels
+
