@@ -18,6 +18,6 @@ if __name__ == '__main__':
     ds = load_survey_ds(survey="abracos1_3pings1m",
                         config=config)
     
-    ds_subset = ds.isel(time=slice(5000, 8000))
+    ds_subset = ds.isel(time=slice(5000, 6500))
 
     ds_subset.to_netcdf("data/input/netCDF-echointegrations/abracos1_3pings1m_subset.nc")
