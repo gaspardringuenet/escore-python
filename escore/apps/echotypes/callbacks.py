@@ -5,11 +5,94 @@ import xarray as xr
 
 from escore.registry import ROIRegistry, get_shape
 from .processing import get_roi_Sv, cluster_roi
-from .figures import get_RGB_fig, get_clustering_labels_fig, echotype_deltaSv_histograms
+from .figures import get_RGB_fig, get_clustering_labels_fig, get_echotype_valid_fig
 from .layout_main import GRAPH_ASPECT
 
 
 def register_callbacks(app, sv, registry_path, root_path):
+
+    # --- Session level callbacks --- #
+    # Set active channels using checklist - this avoids channel order permutations when clicking / unclicking
+    @app.callback(
+        Output('active-channels-store', 'data'),
+        Input('checklist-freqs', 'value')
+    )
+    def update_active_channels(freqs):
+        # Sort frequencies (important for plots)
+        l = freqs.copy()
+        l.sort()
+        payload =  {'values': l}
+        return payload
+    
+    
+    # Force the checklist to contains all freqs in ascending order up to a limit
+    @app.callback(
+        Output('checklist-freqs', 'value'),
+        Input('checklist-freqs', 'value'),
+        State('checklist-freqs', 'options'),
+        State('active-channels-store', 'data')
+    )
+    def enforce_prefix_rule(selected, options, previous_dict):
+
+        ordered_values = [opt['value'] if isinstance(opt, dict) else opt for opt in options]
+
+        previous = previous_dict['values']
+
+        # Find what box changed
+        diff_plus = list(set(selected) - set(previous))
+        diff_minus = list(set(previous) - set(selected))
+
+        n_added, n_removed = len(diff_plus), len(diff_minus)
+
+        # Update the selected values
+        if (n_added == 0) and (n_removed > 0):     # A new element has been unclicked
+            removed_min_idx = min(ordered_values.index(v) for v in diff_minus)  # Find the uncliked elements location in options
+            selected_new = ordered_values[: max(removed_min_idx, 2)]                            # Select only the elements before (excluding the newly unclicked)
+        elif (n_added > 0) and (n_removed == 0):   # A new element has been clicked
+            added_max_idx = max(ordered_values.index(v) for v in diff_plus)     # Idem uncliked
+            selected_new = ordered_values[: max(added_max_idx, 2) + 1]                          # Select elements after (including the newly clicked)
+        else:
+            selected_new = selected  # On app start, no change, do nothing
+
+        return selected_new
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     @app.callback(
         Output(component_id='input-alpha-in', component_property='value'),
@@ -48,9 +131,11 @@ def register_callbacks(app, sv, registry_path, root_path):
         if type == "ROI mask in context":
             window_size = win_esdu, win_depth
             padding = None
+            show_dots = True
         if type == "ROI data only":
             window_size = None
             padding = 0
+            show_dots = False
         
         fig, (w, h) = get_RGB_fig(
             sv, 
@@ -60,22 +145,45 @@ def register_callbacks(app, sv, registry_path, root_path):
             window_size=window_size,
             padding=padding, 
             frequencies=[38, 70, 120],
+            show_dots=show_dots,
             show_mask=True,
             mask_alpha_in=mask_alpha_in,
             mask_alpha_out=mask_alpha_out
         )
 
-        # Make sur the image is properly stretched to the dcc.Graph aspect ratio
+        # Update figure layout
         fig.update_layout({
-            'paper_bgcolor': 'white',
-            'plot_bgcolor': 'pink',
-            'margin': {"b": 0, "t": 10, "l": 0, "r": 0},
-            'xaxis': {
-                'scaleanchor': 'y',
-                'scaleratio': h/w * GRAPH_ASPECT,
-                'constrain': 'domain'
-            }
-        })
+                'paper_bgcolor': 'white',
+                'plot_bgcolor': 'pink'
+         })
+
+        # Make sur the image is properly stretched to the dcc.Graph aspect ratio
+        if type == "ROI mask in context":
+            fig.update_layout({
+                'margin': {"b": 0, "t": 10, "l": 0, "r": 0},
+                'xaxis': {
+                    'scaleanchor': 'y',
+                    'scaleratio': h/w * GRAPH_ASPECT,
+                    'constrain': 'domain'
+                },
+            })
+
+        if type == "ROI data only":
+            fig.update_layout({
+                'margin': {"b": 0, "t": 10, "l": 0, "r": 10},
+                'xaxis': {
+                    'scaleanchor': None,
+                    'scaleratio': None,
+                    'constrain': None,
+                    'autorange': True,
+                    'domain': None
+                },
+                'yaxis': {
+                    'autorange': True,
+                    'domain': None,
+                    'constrain': None,
+                },
+            })
 
         return fig
     
@@ -126,7 +234,7 @@ def register_callbacks(app, sv, registry_path, root_path):
         Output('echo-type-valid-fig', 'figure'),
         Input('dropdown-roi-selection', 'value'),
         Input('labels-da-store', 'data'),
-        Input('input-cluster-id', 'value'),
+        Input('dropdown-cluster-id', 'value'),
         Input('checklist-freqs', 'value'),
     )
     def update_fig(roi_id, labels_payload, cluster_id, frequencies):
@@ -140,14 +248,14 @@ def register_callbacks(app, sv, registry_path, root_path):
         values = np.array(labels_payload["values"]).reshape(labels_payload["shape"])
         labels_da = xr.DataArray(values, dims=['time', 'depth'])
 
-        fig = echotype_deltaSv_histograms(roi_sv, labels_da, cluster_id)
+        fig = get_echotype_valid_fig(roi_sv, labels_da, cluster_id)
 
         return fig
     
 
     # Limit the options for cluster selection to [0, K-1] where K is the number of clusters
     @app.callback(
-        Output('input-cluster-id', 'options'),
+        Output('dropdown-cluster-id', 'options'),
         Input('input-k', 'value')
     )
     def update_cluster_options(k):
@@ -156,7 +264,7 @@ def register_callbacks(app, sv, registry_path, root_path):
 
     # Update the cluster id base on click on the cluster image
     @app.callback(
-        Output('input-cluster-id', 'value'),
+        Output('dropdown-cluster-id', 'value'),
         Input('clustering-plot-fig', 'clickData'),
         prevent_initial_call=True,
     )

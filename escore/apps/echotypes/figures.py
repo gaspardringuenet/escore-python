@@ -31,6 +31,7 @@ def get_RGB_fig(
     window_size:tuple[int, int]=None, 
     padding=10, 
     frequencies=[38, 70, 120],
+    show_dots=True,
     show_mask=True,
     mask_alpha_in=0.3,
     mask_alpha_out=0.
@@ -62,12 +63,13 @@ def get_RGB_fig(
     fig.layout.yaxis.title.text = "Depth sample"
 
     # Add points
-    xs, ys = [p[0]-xmin for p in points], [p[1]-ymin for p in points]
-    fig.add_trace(
-        go.Scatter(x=xs, y=ys,
-                   mode='markers',
-                   marker=dict(color='red', size=5, symbol='circle'))
-    )
+    if show_dots:
+        xs, ys = [p[0]-xmin for p in points], [p[1]-ymin for p in points]
+        fig.add_trace(
+            go.Scatter(x=xs, y=ys,
+                    mode='markers',
+                    marker=dict(color='red', size=5, symbol='circle'))
+        )
 
     # Add mask of selected pixels
     if show_mask:
@@ -127,7 +129,7 @@ def mean_and_sd_lineplot(df, line_name, line_color="red"):
 
 
 
-def echotype_deltaSv_histograms(
+def get_echotype_valid_fig(
     roi_sv,
     labels_da,
     cluster_id,
@@ -181,7 +183,7 @@ def echotype_deltaSv_histograms(
 
     fig.add_traces(
         data=mean_and_sd_lineplot(df, 
-                                  line_name=f"Frequency response rel. {ref_frequency}"),
+                                  line_name=f"Rel. frequency response\n(ref:{ref_frequency} kHz)"),
         rows=2,
         cols=1
     )
@@ -196,7 +198,7 @@ def echotype_deltaSv_histograms(
 
     fig.add_traces(
         data=mean_and_sd_lineplot(df, 
-                                  line_name=f"Absolute frequency response",
+                                  line_name=f"Abs. frequency response",
                                   line_color="blue"),
         rows=2,
         cols=2

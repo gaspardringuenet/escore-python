@@ -1,4 +1,5 @@
 from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 from .layout_utils import *
 
@@ -28,7 +29,8 @@ def make_left_pannel():
             ),
 
             html.Div(
-                dcc.Graph(id="rgb-plot-fig"),
+                dcc.Graph(id="rgb-plot-fig",
+                          config={'responsive': True}),
                 style={
                     "gridColumn": "1 / 23",
                     "gridRow": "4 / 14",
@@ -72,7 +74,7 @@ def make_right_pannel():
         },
         children=[
             html.Div(
-                "Clustering Params",
+                generate_clustering_params_bar(),
                 style={
                     "gridColumn": "1 / -1",
                     "gridRow": "1 / 4",
@@ -81,7 +83,7 @@ def make_right_pannel():
             ),
 
             html.Div(
-                "Clustering Plot",
+                dcc.Graph(id="clustering-plot-fig"),
                 style={
                     "gridColumn": "1 / -1",
                     "gridRow": "4 / 13",
@@ -90,7 +92,7 @@ def make_right_pannel():
             ),
 
             html.Div(
-                "Dist Plots",
+                dcc.Graph(id="echo-type-valid-fig"),
                 style={
                     "gridColumn": "1 / -1",
                     "gridRow": "13 / 21",
@@ -123,6 +125,7 @@ def make_layout(roi_ids, intro_text):
         children=[
 
             # Store data in memory
+            dcc.Store(id='active-channels-store', storage_type='memory', data={'values': [38., 70., 120., 200.]}),
             dcc.Store(id='labels-da-store', storage_type='memory'),
 
 
@@ -140,7 +143,11 @@ def make_layout(roi_ids, intro_text):
 
             # Working session info pannel
             html.Div(
-                "Session info etc.",
+                [
+                    html.B("Session Params."),
+                    dcc.Markdown("""..."""),
+                    generate_frequencies_pannel()
+                ],
                 style={
                     "gridColumn": "1 / 30",
                     "gridRow": "5 / 25",
