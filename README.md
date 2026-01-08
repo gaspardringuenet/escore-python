@@ -77,7 +77,7 @@ Dash is running on http://127.0.0.1:8050/
 A `--config` keywords lets you specify the config.yml file path, as for previous steps.
 
 1.  If you are testing the method from the start you `scripts/config_test_from_start.yml`.
-2.  If you want to test extracting echo-types from pre-defined ROI on ABRAÇOS II test data, use `scripts/config_test_with_ROIs.yml`
+2.  If you want to test extracting echo-types from pre-defined ROI on ABRAÇOS II test data, use `scripts/config_test_from_ROIs.yml`
 
 This step is still in development.
 

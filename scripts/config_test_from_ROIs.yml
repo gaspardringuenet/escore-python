@@ -47,7 +47,7 @@ image_dataset:
 
 # Interactive labelling parameters
 session:
-    name: "test_from_start"        # Choose any name
+    name: "test_from_ROIs"        # Choose any name
     ei: abracos1_3pings1m_test              # the survey echointegration on which to work. Choose only one.
     images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90.0--50.0dB/abracos1_3pings1m_test        # directory in which the ei's image are stored
 
