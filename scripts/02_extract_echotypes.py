@@ -1,17 +1,10 @@
 from pathlib import Path
-import json
-from dash import Dash, dcc, html, callback, Input, Output
-import plotly.express as px
-import numpy as np
+import argparse
 
 from escore.config import load_config
 from escore.io import load_survey_ds
 from escore.registry import ROIRegistry
-
 from escore.apps.echotypes.app import create_app
-
-
-HERE = Path(__file__).resolve().parent.parent
 
 
 def main(config):
@@ -39,9 +32,16 @@ def main(config):
 
 
 if __name__ == '__main__':
+
+    HERE = Path(__file__).resolve().parent.parent
+
+    # Parse config argument
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="scripts/config.yml", help="Path to config file")
+    args = parser.parse_args()
     
     # Load config
-    config = load_config("scripts/config.yml")
+    config = load_config(args.config)
 
     # Execute main
     main(config)
