@@ -20,7 +20,7 @@ paths:
 sv_files:
     test_data:
       leg_id: leg1
-      file: "amazomix_3pings1m_subset.nc" # path inside paths.input-dir
+      file: "abracos1_3pings1m_subset.nc" # path inside paths.input-dir
 
 
 # How to aggregate sv_file of the same survey.
@@ -35,7 +35,7 @@ surveys:
 # Parameters to build the image dataset for ROI labelling
 image_dataset:
     ei_list:
-      - amazomix_3pings1m_test
+      - abracos1_3pings1m_test
     time_frame_size: 10000
     vmin: -90.                 # floats are accepted
     vmax: -50.
@@ -48,8 +48,8 @@ image_dataset:
 # Interactive labelling parameters
 session:
     name: "labelling_session_test_0"        # Choose any name
-    ei: amazomix_3pings1m_test              # the survey echointegration on which to work. Choose only one.
-    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/amazomix_3pings1m_test        # directory in which the ei's image are stored
+    ei: abracos1_3pings1m_test              # the survey echointegration on which to work. Choose only one.
+    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/abracos1_3pings1m_test        # directory in which the ei's image are stored
 
     roi_plots:
         force_plot: False    # whether to plot even when plot already exists for an ROI

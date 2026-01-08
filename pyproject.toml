@@ -7,7 +7,7 @@ name = "escore-python"
 version = "0.0.0"
 
 [tool.setuptools]
-packages = ["src"]
+packages = ["escore"]
 
 [tool.setuptools.package-dir]
 "" = "."
