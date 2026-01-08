@@ -16,5 +16,5 @@ dependencies:
   - pyyaml
   - sqlite
   - dash
-  - dash-bootstrap-component
+  - dash-bootstrap-components
   - scikit-image
