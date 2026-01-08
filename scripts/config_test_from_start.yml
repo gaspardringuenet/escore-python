@@ -49,7 +49,7 @@ image_dataset:
 session:
     name: "labelling_session_test_0"        # Choose any name
     ei: abracos1_3pings1m_test              # the survey echointegration on which to work. Choose only one.
-    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90--50dB/abracos1_3pings1m_test        # directory in which the ei's image are stored
+    images_dir: data/echogram_images/RGB_38_70_120kHz_TF10000_Z0--1_Sv-90.0--50.0dB/abracos1_3pings1m_test        # directory in which the ei's image are stored
 
     roi_plots:
         force_plot: False    # whether to plot even when plot already exists for an ROI

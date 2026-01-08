@@ -5,8 +5,9 @@ The Escore algorithm is described by Annasawmy et al. (2024). DOI - https://doi.
 ## Installation guide
 
 ```bash
-$ conda env create --prefix ./env --file environment.yml
-$ conda activate ./env
+conda env create --prefix ./env --file environment.yml
+conda activate ./env
+pip install -e .
 ```
 
 ## Quick tour
@@ -45,13 +46,13 @@ $ conda activate ./env
 To enable ROI labelling on echogram images with [`labelme`](https://github.com/wkentaro/labelme), an image dataset must be build out of the netCDF acoustic data.
 
 ```bash
-$ python scripts/00_build_image_dataset.py --config scripts/config_test_from_start.yml
+python scripts/00_build_image_dataset.py --config scripts/config_test_from_start.yml
 ```
 
 In order to open an interactive labelling window, the user must call the second script:
 
 ```bash
-$ python scripts/01_label_ROIs.py --config scripts/config_test_from_start.yml
+python scripts/01_label_ROIs.py --config scripts/config_test_from_start.yml
 ```
 
 For now, this step requires the path to the image folder to be correctly specified in the `session.images_dir` field of the configuration file.

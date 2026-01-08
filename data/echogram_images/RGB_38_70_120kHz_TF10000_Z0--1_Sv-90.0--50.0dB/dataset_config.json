@@ -1,0 +1,14 @@
+{
+  "time_frame_size": 10000,
+  "vmin": -90.0,
+  "vmax": -50.0,
+  "z_min_idx": 0,
+  "z_max_idx": -1,
+  "frequencies": [
+    38.0,
+    70.0,
+    120.0
+  ],
+  "echogram_cmap": "RGB",
+  "correct_120": false
+}
