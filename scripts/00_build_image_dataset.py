@@ -1,6 +1,9 @@
+"""
+TODO: Description here
+"""
+
 from pathlib import Path
 from escore.builder import DatasetConfig, build_dataset
-
 import argparse
 from escore.config import load_config
 
@@ -32,3 +35,6 @@ if __name__ == '__main__':
         ei_list=img_config["ei_list"], 
         root_path=Path(config["paths"]["echogram_images_dir"])
     )
+    
+else:
+    print("⚠ This file must be run directly, not imported as a module.")
