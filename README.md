@@ -5,9 +5,8 @@ The Escore algorithm is described by Annasawmy et al. (2024). DOI - https://doi.
 ## Installation guide
 
 ```bash
-conda create --prefix ./env python=3.11
-conda activate ./env
-conda install --file environment.yml
+$ conda env create --prefix ./env --file environment.yml
+$ conda activate ./env
 ```
 
 ## Quick tour

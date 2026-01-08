@@ -1,0 +1,12 @@
+# Ignore my own data
+/data-perso/
+
+# Re-allow only the contents of Test_Data
+!/data/input/netCDF-echointegrations/Test_Data/**
+
+# Conda environment
+/env/
+
+# Other
+*.egg-info
+.vscode/
