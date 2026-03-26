@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "escore"
+version = "0.0.0"
+description = "Multifrequency acoustic classification using the Escore method (Annasawmy et al., 2024)."
+authors = [{name = "Gaspard Ringuenet", email = "gaspard.ringuenet@gmail.com"}]
+requires-python = ">=3.11"
+dependencies = [
+    "dask",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "scipy",
+    "xarray",
+    "scikit-learn"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
