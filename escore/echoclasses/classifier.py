@@ -12,7 +12,7 @@ class EchoclassClassifier:
             method (str, optional): Linkage method. Defaults to 'ward'.
             scale (bool, optional): Whether to scale data. Defaults to True.
         """
-        self.method = method
+        self.method: str = method
         self.scaler = StandardScaler() if scale else None
         self.linkage_matrix: np.ndarray | None = None
         self.labels: np.ndarray | None = None
