@@ -1,22 +1,39 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "escore"
 version = "0.0.0"
-description = "Multifrequency acoustic classification using the Escore method (Annasawmy et al., 2024)."
-authors = [{name = "Gaspard Ringuenet", email = "gaspard.ringuenet@gmail.com"}]
-requires-python = ">=3.11"
+description = "Multifrequency acoustic classification using the Escore method (Annasawmy et al., 2024)"
+readme = "README.md"
+authors = [
+    { name = "Gaspard Ringuenet", email = "gaspard.ringuenet@gmail.com" }
+]
+requires-python = ">=3.10"
 dependencies = [
-    "dask",
-    "matplotlib",
-    "numpy",
-    "pandas",
-    "scipy",
-    "xarray",
-    "scikit-learn"
+    "dask>=2026.3.0",
+    "matplotlib>=3.10.8",
+    "netcdf4>=1.7.3",
+    "numpy>=2.2.6",
+    "palettable>=3.3.3",
+    "pandas>=2.3.3",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.15.3",
+    "seaborn>=0.13.2",
+    "xarray>=2025.6.1",
+    "zarr>=2.18.3",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
+[tool.uv.sources]
+escore = { path = ".", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+extend-ignore = ["F401"]
+
+[tool.pyright]
+python = ".venv"
+
+[tool.pylance]
+python = ".venv"

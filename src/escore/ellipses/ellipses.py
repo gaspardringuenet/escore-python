@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2
 import xarray as xr
+from scipy.stats import chi2
 
 
 def make_ellipses(
@@ -11,9 +11,9 @@ def make_ellipses(
     frequencies,
     ref_freq,
     weight_method,
-    confidence
+    confidence,
 ) -> pd.DataFrame:
-    
+
     unique_classes = np.unique(labels)
     ellipses_list = []
 
@@ -21,11 +21,7 @@ def make_ellipses(
         class_echotypes = echotypes[labels == class_id]
 
         data, weights = _collect_all_observations_weighted(
-            lib_ds,
-            class_echotypes,
-            frequencies,
-            ref_freq,
-            weight_method
+            lib_ds, class_echotypes, frequencies, ref_freq, weight_method
         )
 
         if data.size == 0:
@@ -44,19 +40,16 @@ def _collect_all_observations_weighted(
     echotypes: np.ndarray,
     frequencies: list,
     ref_freq: float,
-    weight_method: str = "none"
+    weight_method: str = "none",
 ) -> tuple[np.ndarray, np.ndarray]:
-    
+
     all_freqs = sorted(list(frequencies) + [ref_freq])
     obs_list = []
     weights_list = []
 
     for e in echotypes:
-
         echotype_sv: xr.DataArray = (
-            lib_ds
-            .Sv
-            .where(lib_ds.echotype == e, drop=True)
+            lib_ds.Sv.where(lib_ds.echotype == e, drop=True)
             .sel(channel=all_freqs)
             .dropna(dim="obs", how="any")
         )
@@ -74,20 +67,20 @@ def _collect_all_observations_weighted(
         if weight_method == "none":
             w = 1.0
         elif weight_method == "sqrt":
-            w = 1. / np.sqrt(n_obs)
+            w = 1.0 / np.sqrt(n_obs)
         elif weight_method == "log":
-            w = 1. / np.log1p(n_obs)
+            w = 1.0 / np.log1p(n_obs)
         elif weight_method == "equal":
-            w = 1. / n_obs
+            w = 1.0 / n_obs
         else:
             raise ValueError(f"Unknown method: {weight_method = }")
-        
+
         # Same weight to all observations
         weights_list.append(np.full(n_obs, w))
 
     if not obs_list:
         return np.array([]).reshape(0, len(frequencies)), np.array([])
-    
+
     data = np.vstack(obs_list)
     weights = np.concatenate(weights_list)
 
@@ -97,14 +90,8 @@ def _collect_all_observations_weighted(
     return data, weights
 
 
+def _fit_ellipse_weighted(data, weights, class_id, confidence) -> dict:
 
-def _fit_ellipse_weighted(
-    data,
-    weights,
-    class_id,
-    confidence
-) -> dict:
-    
     if data.shape[0] < 2:
         print(f"Class {class_id} has insufficient data: {data.shape = }")
         return None
@@ -132,7 +119,7 @@ def _fit_ellipse_weighted(
     # Sort eigenvalues and eigenvectors
     eigen_vals_sorted = eigen_vals[sorted_idx]
     eigen_vecs_sorted = eigen_vecs[:, sorted_idx]
-        
+
     # Semi-axes (sorted with largest first)
     semi_axes = np.sqrt(eigen_vals_sorted * chi2_val)
 
@@ -146,41 +133,42 @@ def _fit_ellipse_weighted(
         "cov": cov,
         "n_obs": data.shape[0],
         "n_dims": n_dims,
-        "chi2_scale": chi2_val
+        "chi2_scale": chi2_val,
     }
 
     # 2D-specific parameters
     if n_dims == 2:
         major_eigenvec = eigen_vecs_sorted[:, 0].real
         angle = np.degrees(np.arctan2(major_eigenvec[1], major_eigenvec[0]))
-        result.update({
-            "center_x": center[0],
-            "center_y": center[1],
-            "semi_major": semi_axes[0],
-            "semi_minor": semi_axes[1],
-            "angle": angle,
-            "cov_xx": cov[0, 0],
-            "cov_yy": cov[1, 1],
-            "cov_xy": cov[0, 1]
-        })
+        result.update(
+            {
+                "center_x": center[0],
+                "center_y": center[1],
+                "semi_major": semi_axes[0],
+                "semi_minor": semi_axes[1],
+                "angle": angle,
+                "cov_xx": cov[0, 0],
+                "cov_yy": cov[1, 1],
+                "cov_xy": cov[0, 1],
+            }
+        )
 
     return result
 
 
-
-
 def test():
     """Build mock data for testing the ellipses module."""
-    import pandas as pd
     from datetime import datetime, timedelta
-    
+
+    import pandas as pd
+
     # Parameters
     n_classes = 5
     n_echotypes = 70
-    freqs = [70., 120.]
-    ref_freq = 38.
+    freqs = [70.0, 120.0]
+    ref_freq = 38.0
     all_freqs = sorted([ref_freq] + freqs)
-    
+
     # Generate observations
     labels = []
     obs_list = []
@@ -189,18 +177,18 @@ def test():
     lon_list = []
     time_list = []
     depth_list = []
-    
+
     base_time = datetime(2017, 4, 10, 19, 52, 6)
-    
+
     for echotype_id in range(n_echotypes):
         class_id = echotype_id % n_classes
         n_obs = np.random.randint(100, 1000)  # Fewer obs for faster testing
-        
+
         # Gaussian distribution centered around 40 dB
-        mu = 40. + 10. * np.random.random(size=len(all_freqs))
-        sigma = 5. * np.random.random(size=len(all_freqs))
+        mu = 40.0 + 10.0 * np.random.random(size=len(all_freqs))
+        sigma = 5.0 * np.random.random(size=len(all_freqs))
         sv_data = mu + sigma * np.random.randn(n_obs, len(all_freqs))
-        
+
         labels.append(class_id)
         obs_list.append(sv_data)
         echotype_list.extend([echotype_id] * n_obs)
@@ -208,11 +196,11 @@ def test():
         lon_list.extend(np.random.uniform(-35.0, -34.5, n_obs))
         time_list.extend([base_time + timedelta(seconds=i) for i in range(n_obs)])
         depth_list.extend(np.random.uniform(130, 200, n_obs))
-    
+
     # Concatenate all observations
     sv_array = np.vstack(obs_list)
     total_obs = sv_array.shape[0]
-    
+
     # Create xarray Dataset
     lib_ds = xr.Dataset(
         data_vars={
@@ -230,14 +218,14 @@ def test():
         attrs={
             "echotype_library_name": "test_lib",
             "description": "Mock echotype Sv observations",
-        }
+        },
     )
-    
+
     print(lib_ds)
-    
+
     # Test the make_ellipses function
     all_echotypes = np.arange(n_echotypes)
-    
+
     ellipses_df = make_ellipses(
         lib_ds=lib_ds,
         labels=labels,
@@ -245,9 +233,9 @@ def test():
         frequencies=freqs,
         ref_freq=ref_freq,
         weight_method="none",
-        confidence=0.95
+        confidence=0.95,
     )
-    
+
     print("\nEllipses DataFrame:")
     print(ellipses_df)
 

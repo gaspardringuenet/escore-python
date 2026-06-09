@@ -1,14 +1,21 @@
-from matplotlib.figure import Figure
+from typing import Any, Callable
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.cluster.hierarchy import linkage, fcluster
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from matplotlib.figure import Figure
+from scipy.cluster.hierarchy import fcluster, linkage
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    calinski_harabasz_score,
+    classification_report,
+    confusion_matrix,
+    davies_bouldin_score,
+    silhouette_score,
+)
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, classification_report
-from typing import Callable, Any
+from sklearn.preprocessing import StandardScaler
+
 
 def evaluate_n_clusters(
     X: np.ndarray | pd.DataFrame,
@@ -16,7 +23,7 @@ def evaluate_n_clusters(
     get_labels_fn: Callable[[Any, np.ndarray, int], np.ndarray] | None = None,
     n_clusters_range: range = range(2, 11),
     scale: bool = True,
-    **clusterer_kwargs
+    **clusterer_kwargs,
 ) -> pd.DataFrame:
     """Evalutate clustering quality for different number of clusters using multiple metrics.
 
@@ -24,7 +31,7 @@ def evaluate_n_clusters(
         X (np.ndarray | pd.DataFrame): Feature matrix for clustering.
         clusterer (Any, optional): Clustering model with fit/predict interface
             (e.g. EchoclassClassifier, KMeans). Defaults to None.
-        get_labels_fn (Callable[[Any, np.ndarray, int], np.ndarray] | None, optional): 
+        get_labels_fn (Callable[[Any, np.ndarray, int], np.ndarray] | None, optional):
             Function to extract labels from clusterer.
             Signature: get_labels_fn(clusterer, X, n_clusters) -> np.ndarray.
             If None, assumes clusterer has fit_predict(X, n_clusters) method.
@@ -40,7 +47,7 @@ def evaluate_n_clusters(
     Returns:
         pd.DataFrame: Metrics for each number of clusters.
     """
-    
+
     # Data preprocessing
     if isinstance(X, pd.DataFrame):
         X = X.values
@@ -48,17 +55,21 @@ def evaluate_n_clusters(
 
     # Default to hierarchical clustering if no clusterer provided
     if clusterer is None:
-        method = clusterer_kwargs.pop('method', 'ward')
+        method = clusterer_kwargs.pop("method", "ward")
         Z = linkage(X, method=method)
-        get_labels_fn = lambda _, __, n: fcluster(Z, n, criterion='maxclust')
+
+        def get_labels_fn(_, __, n):
+            return fcluster(Z, n, criterion="maxclust")
     elif get_labels_fn is None:
         # Assume clusterer as fit_predict(features_df, n_clusters) method
-        if not hasattr(clusterer, 'fit_predict'):
+        if not hasattr(clusterer, "fit_predict"):
             raise ValueError(
                 "Clusterer must have fit_predict(X, n_clusters) method "
                 "or user must provide custom get_labels_fn(clusterer, X, n_clusters)"
             )
-        get_labels_fn = lambda clr, X, n: clr.fit_predict(X, n)
+
+        def get_labels_fn(clr, X, n):
+            return clr.fit_predict(X, n)
 
     results = []
     for n_clusters in n_clusters_range:
@@ -74,20 +85,20 @@ def evaluate_n_clusters(
             davies_bouldin = np.nan
             calinski_harabasz = np.nan
 
-        results.append({
-            "n_clusters": n_clusters,
-            "silhouette_score": silhouette,
-            "davis_bouldin_index": davies_bouldin,
-            "calinski_harabasz_index": calinski_harabasz
-        })
+        results.append(
+            {
+                "n_clusters": n_clusters,
+                "silhouette_score": silhouette,
+                "davis_bouldin_index": davies_bouldin,
+                "calinski_harabasz_index": calinski_harabasz,
+            }
+        )
 
     return pd.DataFrame(results)
 
 
 def plot_cluster_evaluation(
-    evaluation_df: pd.DataFrame,
-    figsize: tuple = (15, 4),
-    layout: str = "constrained"
+    evaluation_df: pd.DataFrame, figsize: tuple = (15, 4), layout: str = "constrained"
 ) -> Figure:
     """Plot cluster evaluation metrics.
 
@@ -103,30 +114,35 @@ def plot_cluster_evaluation(
     fig, axes = plt.subplots(1, 3, figsize=figsize, layout=layout)
 
     # Silhouette score
-    axes[0].plot(evaluation_df['n_clusters'], evaluation_df['silhouette_score'], 'o-', linewidth=2)
-    axes[0].set_xlabel('Number of Clusters')
-    axes[0].set_ylabel('Silhouette Score')
+    axes[0].plot(evaluation_df["n_clusters"], evaluation_df["silhouette_score"], "o-", linewidth=2)
+    axes[0].set_xlabel("Number of Clusters")
+    axes[0].set_ylabel("Silhouette Score")
     axes[0].grid(True, alpha=0.3)
 
     # Davis-Bouldin Index
-    axes[1].plot(evaluation_df['n_clusters'], evaluation_df['davis_bouldin_index'], 'o-', linewidth=2)
-    axes[1].set_xlabel('Number of Clusters')
-    axes[1].set_ylabel('Davis-Bouldin Index')
+    axes[1].plot(
+        evaluation_df["n_clusters"], evaluation_df["davis_bouldin_index"], "o-", linewidth=2
+    )
+    axes[1].set_xlabel("Number of Clusters")
+    axes[1].set_ylabel("Davis-Bouldin Index")
     axes[1].grid(True, alpha=0.3)
 
     # Calinski-Harabasz Index
-    axes[2].plot(evaluation_df['n_clusters'], evaluation_df['calinski_harabasz_index'], 'o-', linewidth=2)
-    axes[2].set_xlabel('Number of Clusters')
-    axes[2].set_ylabel('Calinski-Harabasz Index')
+    axes[2].plot(
+        evaluation_df["n_clusters"], evaluation_df["calinski_harabasz_index"], "o-", linewidth=2
+    )
+    axes[2].set_xlabel("Number of Clusters")
+    axes[2].set_ylabel("Calinski-Harabasz Index")
     axes[2].grid(True, alpha=0.3)
 
     return fig
 
+
 def validate_classification(
     features_df: pd.DataFrame,
-    test_size: float = 0.3, 
-    n_estimators: int = 500, 
-    random_state: int = 42
+    test_size: float = 0.3,
+    n_estimators: int = 500,
+    random_state: int = 42,
 ) -> dict:
     """Validate echo-class classification using Random Forest.
 
@@ -140,29 +156,30 @@ def validate_classification(
         dict: Results including model, predictions, confusion matrix, importance.
     """
 
-    feature_cols = [c for c in features_df.columns if c != 'label']
+    feature_cols = [c for c in features_df.columns if c != "label"]
     X = features_df[feature_cols].values
-    y = features_df['label'].values
-    
+    y = features_df["label"].values
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
-    
-    model: RandomForestClassifier = RandomForestClassifier(n_estimators=n_estimators, random_state=random_state)
+
+    model: RandomForestClassifier = RandomForestClassifier(
+        n_estimators=n_estimators, random_state=random_state
+    )
     model.fit(X_train, y_train)
-    
+
     y_pred = model.predict(X_test)
-    
+
     return {
-        'model': model,
-        'y_test': y_test,
-        'y_pred': y_pred,
-        'confusion_matrix': confusion_matrix(y_test, y_pred),
-        'classification_report': classification_report(y_test, y_pred, zero_division=np.nan),
-        'feature_importance': pd.DataFrame({
-            'feature': feature_cols,
-            'importance': model.feature_importances_
-        }).sort_values('importance', ascending=False),
-        'train_score': model.score(X_train, y_train),
-        'test_score': model.score(X_test, y_test)
+        "model": model,
+        "y_test": y_test,
+        "y_pred": y_pred,
+        "confusion_matrix": confusion_matrix(y_test, y_pred),
+        "classification_report": classification_report(y_test, y_pred, zero_division=np.nan),
+        "feature_importance": pd.DataFrame(
+            {"feature": feature_cols, "importance": model.feature_importances_}
+        ).sort_values("importance", ascending=False),
+        "train_score": model.score(X_train, y_train),
+        "test_score": model.score(X_test, y_test),
     }
