@@ -20,6 +20,7 @@ dependencies = [
     "palettable>=3.3.3",
     "pandas>=2.3.3",
     "panel>=1.9.3",
+    "pyarrow>=24.0.0",
     "scikit-learn>=1.7.2",
     "scipy<1.15.2",
     "seaborn>=0.13.2",
