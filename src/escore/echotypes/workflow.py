@@ -16,7 +16,7 @@ from sklearn.pipeline import Pipeline
 
 from escore.echotypes.paths import ResultsPathManager
 from escore.echotypes.utils import _format_echotype_dataframe, _select_bbox_data, _select_region_row
-from escore.utils.plot import plot_channels, plot_rgb
+from escore.utils.echograms import plot_channels, plot_rgb
 from escore.utils.sklearn import classes_to_segments, stack_for_sklearn, unstack_sklearn_preds
 
 
@@ -728,6 +728,28 @@ class WorkflowDataVisualizer:
         figsize: Tuple[float, float] = (15, 15),
         **plot_kwrgs,
     ):
+        """RGB echogram of each segment produced by EchotypeWorkflow.segment().
+
+        Parameters
+        ----------
+        channel_idx : Tuple[int, int, int], optional
+            Index of the 3 channels to map to red, green, and blue, by default (0, 1, 2)
+        ncols : int, optional
+            Number of subplot columns, by default 2
+        figsize : Tuple[float, float], optional
+            Size of the figure in inches. Passed to matplotlib.pyplot.subplots, by default (15, 15)
+        **plot_kwrgs :
+            Arguments passed to matplotlib.pyplot.pcolormesh.
+
+        Raises
+        ------
+        ValueError
+            If no current region has been set.
+        ValueError
+            If no segmented data is available in workflow.
+        ValueError
+            If number of channel indices is different from 3.
+        """
         if self.parent.current_ is None:
             raise ValueError("No current region in process (use .set_current).")
         if self.parent.current_.segments is None:
@@ -738,18 +760,18 @@ class WorkflowDataVisualizer:
 
         segments_values = self.parent.current_.segments["segment"].values
         n_segments = len(segments_values)
-        nrows = n_segments // ncols + n_segments % ncols
+        nrows = n_segments // ncols + (n_segments % ncols > 0)
         _, axes = plt.subplots(
-            ncols,
             nrows,
+            ncols,
             figsize=figsize,
             sharex=True,
             sharey=True,
         )
-        for seg, (i, ax) in zip(segments_values, enumerate(axes.flat)):
+        for _, (i, ax) in zip(segments_values, enumerate(axes.flat)):
             da_Sv = self.parent._get_segment(i)
             _ = plot_rgb(da_Sv, channels, ax=ax, **plot_kwrgs)
-            ax.set_title(f"segment {i}")
+            ax.set_title(f"segment #{i}")
 
     # Echotype echograms
 
