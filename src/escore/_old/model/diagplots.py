@@ -1,15 +1,18 @@
-from matplotlib.axes import Axes
-from matplotlib.colors import Normalize, Colormap, BoundaryNorm, ListedColormap
-from matplotlib.figure import Figure
+from typing import Any, Sequence, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Any, Tuple, Sequence
+from matplotlib.axes import Axes
+from matplotlib.colors import BoundaryNorm, Colormap, ListedColormap, Normalize
+from matplotlib.figure import Figure
 
 from .transform import EscoreTransform
 
 
-def make_grid(x_values: np.ndarray, y_values: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    
+def make_grid(
+    x_values: np.ndarray, y_values: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
     xx, yy = np.meshgrid(np.array(x_values), np.array(y_values))
     grid = np.stack([xx, yy], axis=-1)
 
@@ -25,7 +28,7 @@ def show_scores_2D(
     figsize: Tuple[int, int],
     layout: str,
     cmap: str | Colormap | None,
-    norm: str | Normalize | None 
+    norm: str | Normalize | None,
 ) -> Tuple[Figure, Any]:
 
     # Classes subplots setup
@@ -37,17 +40,13 @@ def show_scores_2D(
     for i, (ax, c) in enumerate(zip(axes, classes)):
         ax: Axes = ax
 
-        mp = ax.pcolormesh(
-            xx, yy, scores[..., i],
-            cmap=cmap,
-            norm=norm
-        )
+        mp = ax.pcolormesh(xx, yy, scores[..., i], cmap=cmap, norm=norm)
         plt.colorbar(mp, ax=ax)
         ax.set_title(f"Echoclass {c}")
-    
+
     for i in range(n_classes, len(axes)):
         axes[i].set_visible(False)
-    
+
     return fig, axes[:n_classes]  # return Figure + used Axes
 
 
@@ -63,7 +62,7 @@ def best_to_second_plot_2D(
     scores_cmap: str | Colormap | None,
     scores_norm: str | Normalize | None,
     ratio_cmap: str | Colormap | None,
-    ratio_norm: str | Normalize | None
+    ratio_norm: str | Normalize | None,
 ) -> Tuple[Figure, Any]:
     fig, axes = plt.subplots(ncols=3, figsize=figsize, layout=layout, sharey=True)
 
@@ -84,11 +83,15 @@ def best_to_second_plot_2D(
         mp = ax.pcolormesh(xx, yy, ratio, cmap=ratio_cmap, norm=ratio_norm)
     plt.colorbar(mp, ax=ax)
 
-    title = r"Ratio best / $2^{\text{nd}}$" if (trans.ratio_schema == "best / second") else r"Ratio $2^{\text{nd}}$ / best"
+    title = (
+        r"Ratio best / $2^{\text{nd}}$"
+        if (trans.ratio_schema == "best / second")
+        else r"Ratio $2^{\text{nd}}$ / best"
+    )
     ax.set_title(title)
 
     return fig, axes
-    
+
 
 def boundaries_plot_2D(
     classes: Sequence[Any],
@@ -98,9 +101,9 @@ def boundaries_plot_2D(
     figsize: Tuple[int, int],
     layout: str,
     cmap: str | Colormap | None,
-    norm: str | Normalize | None
+    norm: str | Normalize | None,
 ) -> Tuple[Figure, Axes]:
-    
+
     preds_idx = results["predicted_class_idx"]
     absolute_mask = results["absolute_threshold_mask"]
     relative_mask = results["relative_threshold_mask"]
@@ -117,14 +120,18 @@ def boundaries_plot_2D(
 
     # Plot relative threshold mask
     ax.pcolormesh(
-        xx, yy, relative_mask,
+        xx,
+        yy,
+        relative_mask,
         cmap="Greys_r",
-        alpha=0.5
+        alpha=0.5,
     )
 
     # Plot absolute threshold mask on top of it (more important)
     ax.pcolormesh(
-        xx, yy, absolute_mask,
+        xx,
+        yy,
+        absolute_mask,
         cmap="Greys_r",
     )
 
@@ -134,17 +141,10 @@ def boundaries_plot_2D(
         cmap = "tab10"
     if isinstance(cmap, str):
         cmap = ListedColormap(plt.get_cmap(cmap).colors[:n_classes])
-    norm = BoundaryNorm(
-        boundaries=np.arange(-0.5, n_classes + 0.5, 1), 
-        ncolors=n_classes
-    )
+    norm = BoundaryNorm(boundaries=np.arange(-0.5, n_classes + 0.5, 1), ncolors=n_classes)
 
     # Plot classes predictions (masked array means we only plot where the two masks are not)
-    mp = ax.pcolormesh(
-        xx, yy, preds_idx,
-        cmap=cmap,
-        norm=norm
-    )
+    mp = ax.pcolormesh(xx, yy, preds_idx, cmap=cmap, norm=norm)
 
     cbar = plt.colorbar(mp, ticks=np.arange(len(classes)), ax=ax)
     cbar.set_ticklabels(classes)

@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 import xarray as xr
 
@@ -7,10 +5,14 @@ import xarray as xr
 def stack_for_sklearn(
     da_Sv: xr.DataArray,
     drop_na: bool = True,
+    time_var: str = "ping_time",
+    depth_var: str = "depth",
+    channel_var: str = "channel",
 ) -> xr.DataArray:
+    """Stack an acoustic DataArray for sklearn prediction."""
 
     # Stack (ping_time, depth) into a flat sample dimension -> (n_samples, channel)
-    da_stacked = da_Sv.stack(sample=("ping_time", "depth")).transpose("sample", "channel")
+    da_stacked = da_Sv.stack(sample=(time_var, depth_var)).transpose("sample", channel_var)
 
     # Drop NaN samples
     if drop_na:
@@ -24,13 +26,13 @@ def unstack_sklearn_preds(
     da_stacked: xr.DataArray,
     name: str | None = None,
 ) -> xr.DataArray:
+    """Unstack the sklearn prediction using the da_stacked array that was used as prediction
+    input."""
 
-    da_preds = xr.DataArray(
-        preds,
-        coords={"sample": da_stacked.coords["sample"]},
-        dims=["sample"],
-        name=name,
-    ).unstack("sample")
+    da_preds = da_stacked.isel(channel=0).drop_vars("channel")
+    da_preds.data = preds
+    da_preds = da_preds.unstack("sample")
+    da_preds.name = name
 
     return da_preds
 

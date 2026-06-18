@@ -593,6 +593,7 @@ class EchotypeWorkflow:
             region_mask_ds["mask_3d"].sel(region_id=region_id, drop=False) == 1,
             bbox_Sv,
             np.nan,
+            keep_attrs=True,
         )
 
         return region_acoustic_data.drop_vars("region_id")
