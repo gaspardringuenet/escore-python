@@ -1,3 +1,4 @@
+import datetime as dt
 import shutil
 from dataclasses import asdict, dataclass
 from typing import List, Literal, Sequence, Tuple
@@ -12,12 +13,21 @@ import pandas as pd
 import xarray as xr
 import yaml
 from echoregions.regions2d import Regions2D
+from numpy.typing import NDArray
 from sklearn.pipeline import Pipeline
 
+from escore.echotypes.echograms import plot_channels, plot_rgb
 from escore.echotypes.paths import ResultsPathManager
-from escore.echotypes.utils import _format_echotype_dataframe, _select_bbox_data, _select_region_row
-from escore.utils.echograms import plot_channels, plot_rgb
-from escore.utils.sklearn import classes_to_segments, stack_for_sklearn, unstack_sklearn_preds
+from escore.echotypes.sklearn import (
+    classes_to_segments,
+    stack_for_sklearn,
+    unstack_sklearn_preds,
+)
+from escore.echotypes.utils import (
+    _format_echotype_dataframe,
+    _select_bbox_data,
+    _select_region_row,
+)
 
 
 class EchotypeWorkflow:
@@ -112,7 +122,9 @@ class EchotypeWorkflow:
                     "Unsaved changes for the previous echotype are dropped. "
                 )
             else:
-                print(f"Current already set to {self.current_.region_id}. Reloading recipe...")
+                print(
+                    f"Current already set to {self.current_.region_id}. Reloading recipe..."
+                )
 
         # Create new current instance, pre-load data subset and set edit mode
         self.current_ = CurrentRegion(region_id, self._get_region_data(region_id))
@@ -123,7 +135,9 @@ class EchotypeWorkflow:
         # Display warning about the status of region
         state_dict = self._load_state()
         status: str = state_dict["status"][region_id]
-        print(f"WARNING: Current region has status {status.upper()}.") if verbose else None
+        print(
+            f"WARNING: Current region has status {status.upper()}."
+        ) if verbose else None
 
         # Update workflow state
         state_dict["last"] = region_id
@@ -196,6 +210,7 @@ class EchotypeWorkflow:
         ValueError
             If no segmenter has been set.
         """
+        # TODO: Add possibility to use ping_time and depth as features
 
         # Checks
         if self.current_ is None:
@@ -208,7 +223,7 @@ class EchotypeWorkflow:
         # Preprocessing
         da_Sv = self.current_.region_data
         da_stacked = stack_for_sklearn(da_Sv, drop_na=True)
-        X = da_stacked.values
+        X = da_stacked.values  # (n_samples, n_channels)
 
         # Fit model & predict
         preds: np.ndarray = self.current_.segmenter.fit_predict(X)  # type: ignore
@@ -336,7 +351,9 @@ class EchotypeWorkflow:
         state_dict["status"][self.current_.region_id] = "completed"
         self._dump_state(state_dict)
 
-        print(f"Region {self.current_.region_id} worflow status updated to 'completed'.")
+        print(
+            f"Region {self.current_.region_id} worflow status updated to 'completed'."
+        )
 
     def mark_rejected(self):
         """Set current region's status as rejected in workflow state
@@ -417,6 +434,7 @@ class EchotypeWorkflow:
                 values="Sv",
             )
         )
+        df.columns.name = None
 
         # Rename channel columns
         df = df.rename(
@@ -425,13 +443,19 @@ class EchotypeWorkflow:
 
         # Add region attributes
         # Select region row
-        region_row = _select_region_row(self.regions, self.current_.region_id, close=False)  # type: ignore
+        region_row = _select_region_row(
+            self.regions,
+            self.current_.region_id,  # type: ignore (check performed by .get_echotype_datarray)
+            close=False,
+        )
 
         # Append default columns
         default_cols = ["region_id", "region_class"]
         if isinstance(add_region_cols, list) and len(add_region_cols) > 0:
             # Keep defaults and add additional
-            cols = default_cols + [col for col in add_region_cols if col not in default_cols]
+            cols = default_cols + [
+                col for col in add_region_cols if col not in default_cols
+            ]
         elif add_region_cols == "default":
             cols = default_cols
         else:
@@ -563,7 +587,9 @@ class EchotypeWorkflow:
 
             # Load to CurrentRegion dataclass
             self.current_.segmenter = joblib.load(segmenter_path)
-            self.current_.segment_id = yaml.safe_load(open(recipe_path, "r"))["segment_id"]
+            self.current_.segment_id = yaml.safe_load(open(recipe_path, "r"))[
+                "segment_id"
+            ]
             self.current_.echotype_data = xr.open_dataarray(echotype_path)
 
         # Else: we assume the directory is empty and there is no data to load
@@ -643,6 +669,7 @@ class CurrentRegion:
 
     # Worflow outputs
     segmenter: Pipeline | None = None
+    uses_time_depth_features: bool | None = None
     segments: xr.DataArray | None = None
     segment_id: int | None = None
     echotype_data: xr.DataArray | None = None
@@ -668,13 +695,17 @@ class WorkflowDataVisualizer:
 
         if how == "bbox":
             region_row = _select_region_row(self.parent.regions, region_id, close=True)
-            da_Sv = _select_bbox_data(self.parent.data, self.parent.acoustic_var, region_row)
+            da_Sv = _select_bbox_data(
+                self.parent.data, self.parent.acoustic_var, region_row
+            )
             return plot_channels(da_Sv, plot_api, region_row, **plot_kwrgs)
         elif how == "exact":
             da_Sv = self.parent.current_.region_data
             return plot_channels(da_Sv, plot_api, **plot_kwrgs)
         else:
-            raise ValueError(f"Invalid argument {how = }. Expected on of ['bbox', 'exact']")
+            raise ValueError(
+                f"Invalid argument {how = }. Expected on of ['bbox', 'exact']"
+            )
 
     def input_rgb(
         self,
@@ -688,12 +719,16 @@ class WorkflowDataVisualizer:
         region_id = self.parent.current_.region_id
 
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         if how == "bbox":
             region_row = _select_region_row(self.parent.regions, region_id, close=True)
-            da_Sv = _select_bbox_data(self.parent.data, self.parent.acoustic_var, region_row)
+            da_Sv = _select_bbox_data(
+                self.parent.data, self.parent.acoustic_var, region_row
+            )
             plot_rgb(da_Sv, channels, region_row, **plot_kwrgs)
         elif how == "exact":
             da_Sv = self.parent.current_.region_data
@@ -756,7 +791,9 @@ class WorkflowDataVisualizer:
         if self.parent.current_.segments is None:
             raise ValueError("No segmented data (use .segment)")
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         segments_values = self.parent.current_.segments["segment"].values
@@ -801,7 +838,9 @@ class WorkflowDataVisualizer:
         if self.parent.current_.echotype_data is None:
             raise ValueError("No echotype_data (use .select_segment)")
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         da_Sv = self.parent.current_.echotype_data
@@ -825,7 +864,9 @@ class WorkflowDataVisualizer:
         channel_cols = df.filter(regex=r"^channel_\d+").columns.to_list()
 
         # Build summary dataframe
-        summary = pd.DataFrame({"mean": df[channel_cols].mean(), "sd": df[channel_cols].std()})
+        summary = pd.DataFrame(
+            {"mean": df[channel_cols].mean(), "sd": df[channel_cols].std()}
+        )
         summary.index.name = "channel"
         summary = summary.reset_index()
 
@@ -902,7 +943,9 @@ class WorkflowDataVisualizer:
                     f"does not match number of channels: {len(channel_cols)}."
                 )
             # Rename channel cols to contain channel values
-            df = df.rename(columns={col: val for col, val in zip(channel_cols, channel_values)})
+            df = df.rename(
+                columns={col: val for col, val in zip(channel_cols, channel_values)}
+            )
 
             # Use provided values as new channel columns
             channel_values_final = list(channel_values)

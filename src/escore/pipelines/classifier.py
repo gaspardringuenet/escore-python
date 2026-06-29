@@ -1,8 +1,121 @@
+from typing import List, Literal
+
 import numpy as np
 from scipy.spatial.distance import mahalanobis
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, ClusterMixin
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data  # type: ignore
+
+
+class DummyCluster(ClusterMixin, BaseEstimator):
+    def __init__(self, predict_value=0):
+        self.predict_value = predict_value
+
+    def fit_predict(self, X, y=None):
+        self.fit(X)
+        return self.predict(X)
+
+    def fit(self, X, y=None):
+
+        # Input validation
+        X = validate_data(self, X)
+
+        self.predict_value_ = self.predict_value
+        return self
+
+    def predict(self, X):
+
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        # Input validation
+        X = validate_data(self, X, reset=False)
+
+        return np.ones(X.shape[0])
+
+
+class FixedSvThresholds(ClassifierMixin, BaseEstimator):
+    def __init__(
+        self,
+        column_idx: List[int] = [0],
+        thresh_vals: List[float] = [-40],
+        thresh_types: List[Literal["above", "below"]] = ["above"],
+    ):
+        """Classify data based on fixed threshold values."""
+
+        if not len(column_idx) == len(thresh_vals) == len(thresh_types):
+            raise ValueError("columns and threshold arguments must have same length.")
+        if not set(thresh_types) <= {"above", "below"}:
+            raise ValueError("threshold types must be either 'above' or 'below'.")
+
+        # Find duplicated: they must be max 2 and have different types
+        counter = {x: {"n": 0, "types": set()} for x in set(column_idx)}
+        for i, x in enumerate(column_idx):
+            counter[x]["n"] += 1
+            counter[x]["types"].add(thresh_types[i])
+        for x, count_dict in counter.items():
+            if count_dict["n"] > 2:
+                raise ValueError(
+                    "Cannot specify more than 2 thresholds for one given column id."
+                )
+            if len(count_dict["types"]) > 2:
+                raise ValueError(
+                    "Cannot specify more than 2 thresholds types for one column id."
+                )
+
+        self.column_idx = column_idx
+        self.thresh_vals = thresh_vals
+        self.thresh_types = thresh_types
+
+    def fit_predict(self, X, y=None):
+        self.fit(X)
+        return self.predict(X)
+
+    def fit(self, X, y=None):
+
+        # Input validation
+        X = validate_data(self, X)
+
+        if not set(self.column_idx) <= set(range(X.shape[1])):
+            raise ValueError(
+                f"Parameter column_idx is out of bound from input X with {X.shape[1]} features."
+            )
+
+        self.column_idx_ = np.array(self.column_idx).squeeze()
+        self.thresh_vals_ = np.array(self.thresh_vals).squeeze()
+        self.thresh_types_ = np.array(self.thresh_types).squeeze()
+
+        return self
+
+    def predict(self, X):
+
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        # Input validation
+        X = validate_data(self, X, reset=False)
+
+        preds = np.ones(X.shape[0], dtype=bool)  # shape (n_samples,)
+
+        # Apply "above" thresholds
+        id_mask = self.thresh_types_ == "above"
+        if id_mask.sum() > 0:
+            idx = self.column_idx_[id_mask]
+            threshs = self.thresh_vals_[id_mask]
+            above_preds = X[:, idx] >= threshs  # same number of cols -> cast on rows
+            preds &= above_preds.squeeze()
+
+        # Apply "below" thresholds
+        id_mask = ~id_mask
+        if id_mask.sum() > 0:
+            idx = self.column_idx_[id_mask]
+            threshs = self.thresh_vals_[id_mask]
+            below_preds = X[:, idx] <= threshs
+            preds &= (
+                below_preds.squeeze()
+            )  # for each col we can specify above and below
+
+        return preds.astype("uint8")  # return as integer
 
 
 class EscoreClassifier(ClassifierMixin, BaseEstimator):

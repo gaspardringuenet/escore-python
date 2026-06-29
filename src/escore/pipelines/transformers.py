@@ -49,3 +49,41 @@ class SvDifferenceExtractor(TransformerMixin, BaseEstimator):
         if "ref_channel_idx" in params:
             self.ref_channel_idx = params["ref_channel_idx"]
         return self
+
+
+class PlusSvExtractor(TransformerMixin, BaseEstimator):
+    """Sum channels to compute ΣSv (or ΣMVBS)."""
+
+    def fit(self, X, y=None):
+        X = validate_data(self, X, y)
+        return self
+
+    def transform(self, X):
+
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        # Input validation
+        X = validate_data(self, X, reset=False).copy()
+
+        # Compute ΣMVBS
+        return np.sum(X, axis=-1, keepdims=True)  # shape (n_samples, 1)
+
+
+class MeanSvExtractor(TransformerMixin, BaseEstimator):
+    """Mean of Sv accros channels."""
+
+    def fit(self, X, y=None):
+        X = validate_data(self, X, y)
+        return self
+
+    def transform(self, X):
+
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        # Input validation
+        X = validate_data(self, X, reset=False).copy()
+
+        # Compute ΣMVBS
+        return np.mean(X, axis=-1, keepdims=True)  # shape (n_samples, 1)

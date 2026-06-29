@@ -17,9 +17,24 @@ def _select_region_row(regions: Regions2D, region_id: int, close: bool):
 
 
 def _select_bbox_data(ds: xr.Dataset, var: str, region_row: pd.Series):
+
+    # Padding to ensure region bbox still contained in bbox DataArray
+    ping_left = ds.ping_time.sel(
+        ping_time=region_row["region_bbox_left"], method="pad"
+    ).values
+    ping_right = ds.ping_time.sel(
+        ping_time=region_row["region_bbox_right"], method="backfill"
+    ).values
+    depth_top = ds.depth.sel(
+        depth=region_row["region_bbox_top"], method="backfill"
+    ).values
+    depth_bottom = ds.depth.sel(
+        depth=region_row["region_bbox_bottom"], method="pad"
+    ).values
+
     return ds[var].sel(
-        ping_time=slice(region_row["region_bbox_left"], region_row["region_bbox_right"]),
-        depth=slice(region_row["region_bbox_top"], region_row["region_bbox_bottom"]),
+        ping_time=slice(ping_left, ping_right),
+        depth=slice(depth_top, depth_bottom),
     )
 
 
