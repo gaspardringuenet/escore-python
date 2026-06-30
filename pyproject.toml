@@ -1,42 +1,43 @@
-[project]
-name = "escore"
-version = "0.0.0"
-description = "Multifrequency acoustic classification using the Escore method (Annasawmy et al., 2024)"
-readme = "README.md"
-authors = [
-    { name = "Gaspard Ringuenet", email = "gaspard.ringuenet@gmail.com" }
-]
-requires-python = ">=3.10"
-dependencies = [
-    "dask>=2026.3.0",
-    "datashader>=0.19.1",
-    "echoregions==0.2.3",
-    "holoviews>=1.22.1",
-    "hvplot>=0.12.2",
-    "jupyter-bokeh>=4.1.0",
-    "matplotlib>=3.10.8",
-    "netcdf4>=1.7.3",
-    "numpy<=1.26.4",
-    "palettable>=3.3.3",
-    "pandas>=2.3.3",
-    "panel>=1.9.3",
-    "pyarrow>=24.0.0",
-    "scikit-learn>=1.7.2",
-    "scipy<1.15.2",
-    "seaborn>=0.13.2",
-    "xarray>=2025.6.1",
-    "zarr>=2.18.3",
-]
-
-[tool.uv.sources]
-escore = { path = ".", editable = true }
-
 [build-system]
 requires = ["uv_build>=0.11.3,<0.12.0"]
 build-backend = "uv_build"
 
+[project]
+name = "escore"
+version = "0.1.0"
+description = "Multifrequency acoustic classification using the Escore method (Annasawmy et al., 2024)"
+readme = "README.md"
+authors = [
+    { name = "Gaspard Ringuenet", email = "gaspard.ringuenet@proton.me" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    # io
+    "xarray>=2025.6.1,<2026",
+    "netcdf4>=1.7.3,<2",
+    "zarr>=2.18.7,<3",
+    "dask>=2026.3.0,<2026.4.0",
+    "echoregions>=0.2.3", # not pinned: compatibility with echoregions is a major objective
+    # data wrangling
+    "numpy>=1.26.4,<2", # pinned: avoid RunTimeWarning on MacOS M4 with scikit-learn training
+    "pandas>=2.3.3,<3",
+    # modelling
+    "scikit-learn>=1.7.2,<2",
+    # plots
+    # - static
+    "matplotlib>=3.10.8,<4",
+    # - interactive
+    "hvplot>=0.12.2,<1",
+    "holoviews>=1.22.1,<1.23.0",
+    "panel>=1.9.3,<2",
+    "datashader>=0.19.1,<2", # large data plots
+    # - jupyter
+    "ipykernel>=7.3.0,<8",
+    "jupyter-bokeh>=4.1.0,<5",
+]
+
 [tool.ruff]
-line-length = 100
+line-length = 120
 extend-ignore = ["F401"]
 
 [tool.pyright]

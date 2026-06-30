@@ -1,7 +1,6 @@
 from typing import List, Literal
 
 import numpy as np
-from scipy.spatial.distance import mahalanobis
 from sklearn.base import BaseEstimator, ClassifierMixin, ClusterMixin
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data  # type: ignore
@@ -55,13 +54,9 @@ class FixedSvThresholds(ClassifierMixin, BaseEstimator):
             counter[x]["types"].add(thresh_types[i])
         for x, count_dict in counter.items():
             if count_dict["n"] > 2:
-                raise ValueError(
-                    "Cannot specify more than 2 thresholds for one given column id."
-                )
+                raise ValueError("Cannot specify more than 2 thresholds for one given column id.")
             if len(count_dict["types"]) > 2:
-                raise ValueError(
-                    "Cannot specify more than 2 thresholds types for one column id."
-                )
+                raise ValueError("Cannot specify more than 2 thresholds types for one column id.")
 
         self.column_idx = column_idx
         self.thresh_vals = thresh_vals
@@ -111,9 +106,7 @@ class FixedSvThresholds(ClassifierMixin, BaseEstimator):
             idx = self.column_idx_[id_mask]
             threshs = self.thresh_vals_[id_mask]
             below_preds = X[:, idx] <= threshs
-            preds &= (
-                below_preds.squeeze()
-            )  # for each col we can specify above and below
+            preds &= below_preds.squeeze()  # for each col we can specify above and below
 
         return preds.astype("uint8")  # return as integer
 
