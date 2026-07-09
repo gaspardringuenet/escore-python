@@ -233,7 +233,11 @@ class EchotypeWorkflow:
 
         return da_segments
 
-    def select_segment(self, segment_id: int) -> xr.DataArray | None:
+    def select_segment(
+        self,
+        segment_id: int,
+        verbose: bool = True,
+    ) -> xr.DataArray | None:
         """Select echotype data by indicating the segment id to chose.
         Select a segment from segmented data, modify current echotype
         data and metadata, and return echotype DataArray.
@@ -242,6 +246,8 @@ class EchotypeWorkflow:
         ----------
         segment_id : int
             id of the segment corresponding to the desired echotype.
+        verbose: bool
+            Whether to print info to the user.
 
         Returns
         -------
@@ -256,7 +262,7 @@ class EchotypeWorkflow:
             return None
 
         # Save segment_id & echotype_data to CurrentRegion
-        print(f"Using segment {segment_id} as echotype data.")
+        print(f"Using segment {segment_id} as echotype data.") if verbose else None
         self.current_.segment_id = segment_id  # type: ignore (check already performed by _get_segment)
         self.current_.echotype_data = segment  # type: ignore
 
@@ -264,7 +270,11 @@ class EchotypeWorkflow:
 
     # Step 3 - Save results
 
-    def save_current(self, overwrite: bool = False):
+    def save_current(
+        self,
+        overwrite: bool = False,
+        verbose: bool = True,
+    ):
         """Save echotype data and recipe in results directory.
         Automatically change the region's status to 'completed'.
 
@@ -272,6 +282,8 @@ class EchotypeWorkflow:
         ----------
         overwrite : bool, optional
             Allow overwriting an existing echotype, by default False
+        verbose: bool
+            Whether to print info to the user.
 
         Raises
         ------
@@ -321,22 +333,22 @@ class EchotypeWorkflow:
             yaml.safe_dump(recipe, open(recipe_path, "w"))
             self.current_.echotype_data.to_netcdf(echotype_path, engine="netcdf4")  # type: ignore
         except Exception as e:
-            print(f"Dumping echotype failed: {e}")
+            print(f"Dumping echotype failed: {e}") if verbose else None
             if overwrite:
-                print("Going back to previous version of results directory")
+                print("Back to previous version of results dir") if verbose else None
                 shutil.move(failsafe_dir / dir.name, dir.parent)
             else:
-                print("Removing results dir")
+                print("Removing results dir") if verbose else None
                 shutil.rmtree(dir)
         finally:
             if failsafe_dir.exists():
                 shutil.rmtree(failsafe_dir)
-            self._mark_completed()
-            print("Echotype data & recipe saved successfully!")
+            self._mark_completed(verbose)
+            print("Echotype data & recipe saved successfully!") if verbose else None
 
     # Step 4 - Mark the region as processed ("completed" or "rejected")
 
-    def _mark_completed(self):
+    def _mark_completed(self, verbose: bool = True):
         """Set current region's status as completed. Called by save_current.
         Should not be called by user directly."""
 
@@ -347,7 +359,8 @@ class EchotypeWorkflow:
         state_dict["status"][self.current_.region_id] = "completed"
         self._dump_state(state_dict)
 
-        print(f"Region {self.current_.region_id} worflow status updated to 'completed'.")
+        if verbose:
+            print(f"Region {self.current_.region_id} worflow status updated to 'completed'.")
 
     def mark_rejected(self):
         """Set current region's status as rejected in workflow state
@@ -431,9 +444,7 @@ class EchotypeWorkflow:
         df.columns.name = None
 
         # Rename channel columns
-        df = df.rename(
-            columns={col: f"channel_{i}_Sv" for i, col in enumerate(df.columns)}
-        ).reset_index()
+        df = df.rename(columns={col: f"channel_{i}_Sv" for i, col in enumerate(df.columns)}).reset_index()
 
         # Add region attributes
         # Select region row
@@ -452,8 +463,7 @@ class EchotypeWorkflow:
             cols = default_cols
         else:
             raise ValueError(
-                'add_region_cols argument must be either "default" or list of strings.'
-                f"Got {add_region_cols}."
+                f'add_region_cols argument must be either "default" or list of strings.Got {add_region_cols}.'
             )
 
         # Add new columns for all samples in echotype
@@ -466,8 +476,7 @@ class EchotypeWorkflow:
                 df[colname] = [region_row[col]] * len(df)
             except KeyError:
                 print(
-                    f"Warning: column {col} does not exist in regions data. "
-                    f"Available columns {list(region_row.index)}."
+                    f"Warning: column {col} does not exist in regions data. Available columns {list(region_row.index)}."
                 )
 
         return df

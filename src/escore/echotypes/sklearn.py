@@ -37,7 +37,7 @@ def unstack_sklearn_preds(
     return da_preds
 
 
-def classes_to_segments(da_Sv: xr.DataArray, da_classes: xr.DataArray):
+def classes_to_segments(da_Sv: xr.DataArray, da_classes: xr.DataArray) -> xr.DataArray:
     """
     Decompose da_Sv into a (time, depth, channel, segment) array.
     Segment i contains Sv data if this (time, depth) point was assigned class i,
@@ -64,6 +64,6 @@ def classes_to_segments(da_Sv: xr.DataArray, da_classes: xr.DataArray):
 
     # Stack into a new dimension
     da_segments = xr.concat(segmented_data, dim="segment")
-    da_segments["segment"] = segment_values
+    da_segments = da_segments.assign_coords({"segment": ("segment", segment_values)})
 
     return da_segments

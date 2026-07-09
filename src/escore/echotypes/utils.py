@@ -18,23 +18,24 @@ def _select_region_row(regions: Regions2D, region_id: int, close: bool):
 
 def _select_bbox_data(ds: xr.Dataset, var: str, region_row: pd.Series):
 
-    # Padding to ensure region bbox still contained in bbox DataArray
-    ping_left = ds.ping_time.sel(
-        ping_time=region_row["region_bbox_left"], method="pad"
-    ).values
-    ping_right = ds.ping_time.sel(
-        ping_time=region_row["region_bbox_right"], method="backfill"
-    ).values
-    depth_top = ds.depth.sel(
-        depth=region_row["region_bbox_top"], method="backfill"
-    ).values
-    depth_bottom = ds.depth.sel(
-        depth=region_row["region_bbox_bottom"], method="pad"
-    ).values
+    # Find indices directly without using sel() with method parameter
+    ping_left = pd.Timestamp(region_row["region_bbox_left"])
+    ping_right = pd.Timestamp(region_row["region_bbox_right"])
+    depth_top = float(region_row["region_bbox_top"])
+    depth_bottom = float(region_row["region_bbox_bottom"])
 
-    return ds[var].sel(
-        ping_time=slice(ping_left, ping_right),
-        depth=slice(depth_top, depth_bottom),
+    # Use searchsorted to find indices for non-unique coordinates
+    ping_idx_left = (ds.ping_time.values >= ping_left).argmax()
+    ping_idx_right = (ds.ping_time.values <= ping_right)[::-1].argmax()
+    ping_idx_right = len(ds.ping_time) - 1 - ping_idx_right
+
+    depth_idx_top = (ds.depth.values >= depth_top).argmax()
+    depth_idx_bottom = (ds.depth.values <= depth_bottom)[::-1].argmax()
+    depth_idx_bottom = len(ds.depth) - 1 - depth_idx_bottom
+
+    return ds[var].isel(
+        ping_time=slice(ping_idx_left, ping_idx_right + 1),
+        depth=slice(depth_idx_top, depth_idx_bottom + 1),
     )
 
 

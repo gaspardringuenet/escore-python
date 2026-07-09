@@ -1,4 +1,4 @@
-from .classifier import DummyCluster, EscoreClassifier, FixedSvThresholds
+from .classifier import DummyCluster, FixedSvThresholds
 from .transformers import MeanSvExtractor, PlusSvExtractor, SvDifferenceExtractor
 
 __all__ = [
