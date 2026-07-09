@@ -1,4 +1,3 @@
-import datetime as dt
 import shutil
 from dataclasses import asdict, dataclass
 from typing import List, Literal, Sequence, Tuple
@@ -13,24 +12,46 @@ import pandas as pd
 import xarray as xr
 import yaml
 from echoregions.regions2d import Regions2D
-from numpy.typing import NDArray
 from sklearn.pipeline import Pipeline
 
-from escore.echotypes.echograms import plot_channels, plot_rgb
-from escore.echotypes.paths import ResultsPathManager
-from escore.echotypes.sklearn import (
-    classes_to_segments,
-    stack_for_sklearn,
-    unstack_sklearn_preds,
-)
-from escore.echotypes.utils import (
-    _format_echotype_dataframe,
+from .extraction_utils.echograms import plot_channels, plot_rgb
+from .extraction_utils.paths import ResultsPathManager
+from .extraction_utils.wrangler import (
+    _classes_to_segments,
+    _format_feature_dataframe,
     _select_bbox_data,
     _select_region_row,
+    _stack_for_sklearn,
+    _unstack_sklearn_preds,
 )
 
 
-class EchotypeWorkflow:
+@dataclass
+class CurrentRegion:
+    """
+    Data class storing the currently selected region, and its various processing levels.
+    - `region_id`: Region id in the parent ExtractionWorkflow's region field
+    - `region_data`: Acoustic data contained within the region's shape
+    - `segmenter`: Segmentation function applied to the `region_data` samples to produce a segmentation
+    - `uses_time_depth_features`: Whether segmenter take (time, depth, Sv_c1, ..., Sv_cn) as input instead of (Sv_c1, ..., Sv_cn)
+    - `semgents`: DataArray similar to `region_data`, but with data split along a 'segment' dimension, corresponding to the segmentation produced by the segmenter
+    - `segment_id`: Id of the selected segment (segment containing the desired feature)
+    - `feature_data`: DataArray containing only the selected segment's data (padded with NA)
+    """
+
+    # Id & input
+    region_id: int
+    region_data: xr.DataArray
+
+    # Worflow outputs
+    segmenter: Pipeline | None = None
+    uses_time_depth_features: bool | None = None
+    segments: xr.DataArray | None = None
+    segment_id: int | None = None
+    feature_data: xr.DataArray | None = None
+
+
+class ExtractionWorkflow:
     def __init__(
         self,
         ds_MVBS: xr.Dataset,
@@ -79,7 +100,7 @@ class EchotypeWorkflow:
         print(
             "Workflow status reports:\n"
             f"Out of {total} regions, {n_processed} ({n_processed / total:.1%}) have been processed.\n"
-            f" * {n_completed} marked as completed (echotypes have been extracted)\n"
+            f" * {n_completed} marked as completed (features have been extracted)\n"
             f" * {n_rejected} marked as rejected (skipped without extracting)\n"
             f" * {n_pending} remain pending\n"
             f"Last loaded region id: {state_dict['last']}"
@@ -92,7 +113,7 @@ class EchotypeWorkflow:
         region_id: int,
         verbose: bool = True,
     ) -> None:
-        """Change the current region / echotype being processed. Load processing data if
+        """Change the current region / feature being processed. Load processing data if
         there is some.
 
         Parameters
@@ -119,7 +140,7 @@ class EchotypeWorkflow:
             if self.current_.region_id != region_id:
                 print(
                     f"Switching current id from {self.current_.region_id} to {region_id}. "
-                    "Unsaved changes for the previous echotype are dropped. "
+                    "Unsaved changes for the previous feature are dropped. "
                 )
             else:
                 print(f"Current already set to {self.current_.region_id}. Reloading recipe...")
@@ -142,7 +163,7 @@ class EchotypeWorkflow:
         print("Ready for processing!") if verbose else None
 
     def reset_current(self):
-        """Resets current echotype state as blank. Only region_id and region_data
+        """Resets current feature state as blank. Only region_id and region_data
         fields are preserved.
 
         Raises
@@ -154,24 +175,24 @@ class EchotypeWorkflow:
         if self.current_ is None:
             raise ValueError("No current region in process (use .set_current)")
 
-        print("Resetting current echotype state as blank...")
+        print("Resetting current feature state as blank...")
         self.current_.segmenter = None
         self.current_.segments = None
         self.current_.segment_id = None
-        self.current_.echotype_data = None
+        self.current_.feature_data = None
         print("Ready for processing!")
 
     # Step 2 - Set segmentation pipeline & perform segmentation
 
     def set_segmenter(self, segmenter: Pipeline):
-        """Set the segmentation pipeline for echotype extraction.
+        """Set the segmentation pipeline for feature extraction.
         Pipeline ingests np.ndarray's in shape (n_samples, n_channels).
         Segmenter is stored as .segmenter field in `current_`.
 
         Parameters
         ----------
         segmenter : Pipeline
-            scikit-learn Pipeline for echotype extraction.
+            scikit-learn Pipeline for feature extraction.
 
         Raises
         ------
@@ -218,15 +239,15 @@ class EchotypeWorkflow:
 
         # Preprocessing
         da_Sv = self.current_.region_data
-        da_stacked = stack_for_sklearn(da_Sv, drop_na=True)
+        da_stacked = _stack_for_sklearn(da_Sv, drop_na=True)
         X = da_stacked.values  # (n_samples, n_channels)
 
         # Fit model & predict
         preds: np.ndarray = self.current_.segmenter.fit_predict(X)  # type: ignore
 
         # Formatting predictions
-        da_preds = unstack_sklearn_preds(preds, da_stacked)
-        da_segments = classes_to_segments(da_Sv, da_preds)
+        da_preds = _unstack_sklearn_preds(preds, da_stacked)
+        da_segments = _classes_to_segments(da_Sv, da_preds)
 
         # Save to CurrentRegion
         self.current_.segments = da_segments
@@ -238,21 +259,21 @@ class EchotypeWorkflow:
         segment_id: int,
         verbose: bool = True,
     ) -> xr.DataArray | None:
-        """Select echotype data by indicating the segment id to chose.
-        Select a segment from segmented data, modify current echotype
-        data and metadata, and return echotype DataArray.
+        """Select feature data by indicating the segment id to chose.
+        Select a segment from segmented data, modify current feature
+        data and metadata, and return feature DataArray.
 
         Parameters
         ----------
         segment_id : int
-            id of the segment corresponding to the desired echotype.
+            id of the segment corresponding to the desired feature.
         verbose: bool
             Whether to print info to the user.
 
         Returns
         -------
         xr.DataArray
-            echotype DataArray (time, depth, channel) dimensions.
+            feature DataArray (time, depth, channel) dimensions.
         """
         # Get segment from segmented DataArray
         try:
@@ -261,10 +282,10 @@ class EchotypeWorkflow:
             print(f"Unable to fetch segment {segment_id} - {e}")
             return None
 
-        # Save segment_id & echotype_data to CurrentRegion
-        print(f"Using segment {segment_id} as echotype data.") if verbose else None
+        # Save segment_id & feature_data to CurrentRegion
+        print(f"Using segment {segment_id} as feature data.") if verbose else None
         self.current_.segment_id = segment_id  # type: ignore (check already performed by _get_segment)
-        self.current_.echotype_data = segment  # type: ignore
+        self.current_.feature_data = segment  # type: ignore
 
         return segment
 
@@ -275,13 +296,13 @@ class EchotypeWorkflow:
         overwrite: bool = False,
         verbose: bool = True,
     ):
-        """Save echotype data and recipe in results directory.
+        """Save feature data and recipe in results directory.
         Automatically change the region's status to 'completed'.
 
         Parameters
         ----------
         overwrite : bool, optional
-            Allow overwriting an existing echotype, by default False
+            Allow overwriting an existing feature, by default False
         verbose: bool
             Whether to print info to the user.
 
@@ -292,14 +313,14 @@ class EchotypeWorkflow:
         ValueError
             If processing is incomplete (None fields remaining in the CurrentRegion object).
         ValueError
-            If user attemps to save an already saved echotype with overwrite = False.
+            If user attemps to save an already saved feature with overwrite = False.
         """
 
         if self.current_ is None:
             raise ValueError("No current region to dump data from.")
 
         if any(asdict(self.current_).values()) is None:
-            raise ValueError("Cannot dump incomplete echotype.")
+            raise ValueError("Cannot dump incomplete feature.")
 
         region_id = self.current_.region_id
         dir = self.paths.region_results(region_id)
@@ -319,7 +340,7 @@ class EchotypeWorkflow:
         # Select paths
         segmenter_path = self.paths.segmenter(region_id)
         recipe_path = self.paths.recipe(region_id)
-        echotype_path = self.paths.echotype_data(region_id)
+        feature_path = self.paths.feature_data(region_id)
 
         # Format recipe
         recipe: dict = {
@@ -331,9 +352,9 @@ class EchotypeWorkflow:
         try:
             joblib.dump(self.current_.segmenter, segmenter_path)
             yaml.safe_dump(recipe, open(recipe_path, "w"))
-            self.current_.echotype_data.to_netcdf(echotype_path, engine="netcdf4")  # type: ignore
+            self.current_.feature_data.to_netcdf(feature_path, engine="netcdf4")  # type: ignore
         except Exception as e:
-            print(f"Dumping echotype failed: {e}") if verbose else None
+            print(f"Dumping feature failed: {e}") if verbose else None
             if overwrite:
                 print("Back to previous version of results dir") if verbose else None
                 shutil.move(failsafe_dir / dir.name, dir.parent)
@@ -344,7 +365,7 @@ class EchotypeWorkflow:
             if failsafe_dir.exists():
                 shutil.rmtree(failsafe_dir)
             self._mark_completed(verbose)
-            print("Echotype data & recipe saved successfully!") if verbose else None
+            print("Selected feature data & recipe saved successfully!") if verbose else None
 
     # Step 4 - Mark the region as processed ("completed" or "rejected")
 
@@ -375,48 +396,48 @@ class EchotypeWorkflow:
 
         print(f"Region {self.current_.region_id} worflow status updated to 'rejected'.")
 
-    # Bonus Step - Get Echotype Data for direct inspection
+    # Bonus Step - Get Selected feature data for direct inspection
 
-    def get_echotype_dataarray(self) -> xr.DataArray:
-        """Return selected echotype DataArray if is exists.
+    def get_feature_dataarray(self) -> xr.DataArray:
+        """Return selected feature DataArray if is exists.
 
         Returns
         -------
         xr.DataArray
-            Echotype DataArray.
+            Selected feature DataArray.
 
         Raises
         ------
         ValueError
             If no current region has been set.
         ValueError
-            If no echotype data is available.
+            If no feature data is available.
         """
         # Checks
         if self.current_ is None:
             raise ValueError("No current region in process (use .set_current)")
-        if self.current_.echotype_data is None:
-            raise ValueError("No echotype data (use .segment & .select_segment)")
+        if self.current_.feature_data is None:
+            raise ValueError("No feature data (use .segment & .select_segment)")
 
-        return self.current_.echotype_data
+        return self.current_.feature_data
 
-    def get_echotype_dataframe(
+    def get_feature_dataframe(
         self,
         add_region_cols: List[str] | Literal["default"] = "default",
     ) -> pd.DataFrame:
-        """Return selected echotype as DataFrame if is exists
+        """Return selected feature as DataFrame if is exists
 
         Parameters
         ----------
         add_region_cols : List[str] | Literal[&quot;default&quot;], optional
-            Region data to append to each echotype row. If "default", columns
+            Region data to append to each feature row. If "default", columns
             "region_id" and "region_class" are used. To add new columns, specify
             column names as a list. By default "default".
 
         Returns
         -------
         pd.DataFrame
-            DataFrame containing echotype data with default columns
+            DataFrame containing feature data with default columns
             (depth, time, channel_0_Sv, ..., channel_n_Sv, region_id, region_class)
             and requested additional region columns (if they exist).
 
@@ -426,11 +447,11 @@ class EchotypeWorkflow:
             If add_region_cols is neither "default" nor a list of strings.
         """
 
-        da_echotype = self.get_echotype_dataarray()
+        da_feature = self.get_feature_dataarray()
 
         # Format to DataFrame with columns: depth, time, channel_0_Sv, ..., channel_n_Sv
         df = (
-            da_echotype.to_dataframe(
+            da_feature.to_dataframe(
                 name="Sv",
                 dim_order=["depth", "ping_time", "channel"],
             )
@@ -450,7 +471,7 @@ class EchotypeWorkflow:
         # Select region row
         region_row = _select_region_row(
             self.regions,
-            self.current_.region_id,  # type: ignore (check performed by .get_echotype_datarray)
+            self.current_.region_id,  # type: ignore (check performed by .get_feature_datarray)
             close=False,
         )
 
@@ -466,7 +487,7 @@ class EchotypeWorkflow:
                 f'add_region_cols argument must be either "default" or list of strings.Got {add_region_cols}.'
             )
 
-        # Add new columns for all samples in echotype
+        # Add new columns for all samples in feature
         for col in cols:
             # Avoid potential confusion between sample and region attribute (e.g. "depth")
             colname = col if col not in df.columns else f"region_{col}"
@@ -481,26 +502,26 @@ class EchotypeWorkflow:
 
         return df
 
-    # Step 5 - Export entire echotypes dataset as .csv file
+    # Step 5 - Export entire features dataset as .csv file
     def export_completed(
         self,
         add_region_cols: List[str] | Literal["default"] = "default",
     ) -> pd.DataFrame:
-        """Export all echotypes as a single DataFrame. Loop through
+        """Export all features as a single DataFrame. Loop through
         "completed" regions and convert to dataframes using the
-        `.get_echotype_dataframe` method. Echotypes are assigned unique
+        `.get_feature_dataframe` method. Echotypes are assigned unique
         int ids.
 
         Parameters
         ----------
         add_region_cols : List[str] | Literal[&quot;default&quot;], optional
-            Regions data to insert. Passed to get_echotype_dataframe, by default "default"
+            Regions data to insert. Passed to get_feature_dataframe, by default "default"
 
         Returns
         -------
         pd.DataFrame
-            DataFrame containing echotype data with default columns
-            (echotype_id, depth, time, channel_0_Sv, ..., channel_n_Sv, region_id, region_class)
+            DataFrame containing feature data with default columns
+            (feature_id, depth, time, channel_0_Sv, ..., channel_n_Sv, region_id, region_class)
             and requested additional region columns (if they exist).
         """
 
@@ -513,8 +534,8 @@ class EchotypeWorkflow:
             if status != "completed":
                 continue
             self.set_current(region_id, verbose=False)
-            df = self.get_echotype_dataframe(add_region_cols)
-            df.insert(0, "echotype_id", i)
+            df = self.get_feature_dataframe(add_region_cols)
+            df.insert(0, "feature_id", i)
             df_list.append(df)
 
         df_tot = pd.concat(df_list)
@@ -557,7 +578,7 @@ class EchotypeWorkflow:
             return self._init_state()
 
     def _load_current(self, verbose: bool) -> None:
-        """Load a region / echotype processing data. Update CurrentRegion object.
+        """Load a region / feature processing data. Update CurrentRegion object.
         Directory state assumption: existence of a region's result folder is equivalent
         to this folder containing all necessary files (This assumption is enforced by
         dumping all files at once and deleting the directory in case of failure -
@@ -584,12 +605,12 @@ class EchotypeWorkflow:
             # Select paths
             segmenter_path = self.paths.segmenter(region_id)
             recipe_path = self.paths.recipe(region_id)
-            echotype_path = self.paths.echotype_data(region_id)
+            feature_path = self.paths.feature_data(region_id)
 
             # Load to CurrentRegion dataclass
             self.current_.segmenter = joblib.load(segmenter_path)
             self.current_.segment_id = yaml.safe_load(open(recipe_path, "r"))["segment_id"]
-            self.current_.echotype_data = xr.open_dataarray(echotype_path)
+            self.current_.feature_data = xr.open_dataarray(feature_path)
 
         # Else: we assume the directory is empty and there is no data to load
         else:
@@ -660,22 +681,8 @@ class EchotypeWorkflow:
         return self.current_.segments.isel(segment=segment_id).drop_vars("segment")
 
 
-@dataclass
-class CurrentRegion:
-    # Id & input
-    region_id: int
-    region_data: xr.DataArray
-
-    # Worflow outputs
-    segmenter: Pipeline | None = None
-    uses_time_depth_features: bool | None = None
-    segments: xr.DataArray | None = None
-    segment_id: int | None = None
-    echotype_data: xr.DataArray | None = None
-
-
 class WorkflowDataVisualizer:
-    def __init__(self, parent: EchotypeWorkflow):
+    def __init__(self, parent: ExtractionWorkflow):
         self.parent = parent
 
     #### Echograms ####
@@ -755,7 +762,7 @@ class WorkflowDataVisualizer:
         figsize: Tuple[float, float] = (15, 15),
         **plot_kwrgs,
     ):
-        """RGB echogram of each segment produced by EchotypeWorkflow.segment().
+        """RGB echogram of each segment produced by ExtractionWorkflow.segment().
 
         Parameters
         ----------
@@ -800,22 +807,22 @@ class WorkflowDataVisualizer:
             _ = plot_rgb(da_Sv, channels, ax=ax, **plot_kwrgs)
             ax.set_title(f"segment #{i}")
 
-    # Echotype echograms
+    # Selected feature echograms
 
-    def echotype(
+    def feature(
         self,
         plot_api: Literal["hvplot", "plot"] = "hvplot",
         **plot_kwrgs,
     ):
         if self.parent.current_ is None:
             raise ValueError("No current region in process (use .set_current).")
-        if self.parent.current_.echotype_data is None:
-            raise ValueError("No echotype_data (use .select_segment)")
+        if self.parent.current_.feature_data is None:
+            raise ValueError("No feature_data (use .select_segment)")
 
-        da_Sv = self.parent.current_.echotype_data
+        da_Sv = self.parent.current_.feature_data
         return plot_channels(da_Sv, plot_api, **plot_kwrgs)
 
-    def echotype_rgb(
+    def feature_rgb(
         self,
         how: Literal["bbox", "exact"] = "bbox",
         channel_idx: Tuple[int, int, int] = (0, 1, 2),
@@ -824,28 +831,28 @@ class WorkflowDataVisualizer:
         # Checks
         if self.parent.current_ is None:
             raise ValueError("No current region in process (use .set_current).")
-        if self.parent.current_.echotype_data is None:
-            raise ValueError("No echotype_data (use .select_segment)")
+        if self.parent.current_.feature_data is None:
+            raise ValueError("No feature_data (use .select_segment)")
         if not len(channel_idx) == 3:
             raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
         channels = list(channel_idx)
 
-        da_Sv = self.parent.current_.echotype_data
+        da_Sv = self.parent.current_.feature_data
         plot_rgb(da_Sv, channels, **plot_kwrgs)
 
     #### Other plots ####
 
-    def echotype_frequency_response(
+    def feature_frequency_response(
         self,
         relative_to_channel: int | None = None,
         channel_values: Sequence[float] | None = None,
         channel_varname: str = "channel",
     ):
-        # Get echotype data as dataframe
-        df = self.parent.get_echotype_dataframe()
+        # Get feature data as dataframe
+        df = self.parent.get_feature_dataframe()
 
         # Format dataframe (rename channel cols + compute Sv diff if necessary)
-        df = _format_echotype_dataframe(df, relative_to_channel)
+        df = _format_feature_dataframe(df, relative_to_channel)
 
         # Fetch channel columns
         channel_cols = df.filter(regex=r"^channel_\d+").columns.to_list()
@@ -879,14 +886,14 @@ class WorkflowDataVisualizer:
 
         return plot
 
-    def echotype_frequency_response_hist(
+    def feature_frequency_response_hist(
         self,
         relative_to_channel: int | None = None,
         channel_values: Sequence[float] | None = None,
         channel_varname: str = "channel",
         **hvplot_kwrgs,
     ) -> hv.element.Histogram:
-        """Histogram of the echotype's Sv (or Delta Sv) values, by channel.
+        """Histogram of the feature's Sv (or Delta Sv) values, by channel.
         Delta Sv if computed if 'relative_to_channel' is specified.
 
         Parameters
@@ -911,11 +918,11 @@ class WorkflowDataVisualizer:
             If channel_values length does not match the number of channel columns.
         """
 
-        # Get echotype data as dataframe
-        df = self.parent.get_echotype_dataframe()
+        # Get feature data as dataframe
+        df = self.parent.get_feature_dataframe()
 
         # Format dataframe (rename channel cols + compute Sv diff if necessary)
-        df = _format_echotype_dataframe(df, relative_to_channel)
+        df = _format_feature_dataframe(df, relative_to_channel)
 
         # Fetch channel columns
         channel_cols = df.filter(regex=r"^channel_\d+").columns.to_list()

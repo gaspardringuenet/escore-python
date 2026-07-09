@@ -19,5 +19,5 @@ class ResultsPathManager:
     def recipe(self, region_id: int) -> Path:
         return self.region_results(region_id) / f"region_{region_id:03}_recipe.yaml"
 
-    def echotype_data(self, region_id: int) -> Path:
+    def feature_data(self, region_id: int) -> Path:
         return self.region_results(region_id) / f"region_{region_id:03}_echotype.nc"

@@ -6,7 +6,7 @@ from matplotlib.axes import Axes
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.typing import ColorType
 
-from escore.pipelines.classifier import EscoreClassifier
+from ..models.escore_classifier import EscoreClassifier
 
 
 def escore_boundary_plot(

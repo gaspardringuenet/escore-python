@@ -5,7 +5,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data  # type: ignore
 
-from escore.pipelines.transformers import SvDifferenceExtractor
+from escore.models.transformers import SvDifferenceExtractor
 
 
 def make_escore() -> Pipeline:
@@ -198,7 +198,7 @@ class EscoreDiagnostics:
                 feature_data = X_cls[:, feat_idx]
                 feature_results[f"feature_{feat_idx}"] = {
                     "shapiro_p": shapiro(feature_data)[1],
-                    "anderson_stat": anderson(feature_data).statistic,
+                    "anderson_stat": anderson(feature_data).statistic,  # type: ignore
                     "kstest_p": kstest(feature_data, "norm")[1],
                 }
             results[cls] = feature_results
