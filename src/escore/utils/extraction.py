@@ -1,5 +1,6 @@
 import shutil
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import List, Literal, Sequence, Tuple
 
 import holoviews as hv
@@ -56,9 +57,23 @@ class ExtractionWorkflow:
         self,
         ds_MVBS: xr.Dataset,
         regions: Regions2D,
-        results_dir: str,
+        results_dir: str | Path,
         acoustic_var: str = "Sv",
     ):
+        """
+        Container class for the interactive post-processing of Regions2D annotations.
+
+        Parameters
+        ----------
+        ds_MVBS : xr.Dataset
+            Acoustic dataset. Should contain 'ping_time', 'depth' and 'channel' coordinates, as well as an acoustic variable (see `acoustic_var`).
+        regions : Regions2D
+            2D polygonal regions selected on the acoustic dataset (regions outside the dataset's bounds will cause errors).
+        results_dir : str | Path
+            Result directory for processing. Stored data include workflow status and extracted feature and segmentation recipe for each region.
+        acoustic_var : str, optional
+            Name of the acoustic variable in dataset, by default "Sv"
+        """
 
         # Paths
         self.paths = ResultsPathManager(results_dir)
@@ -143,7 +158,9 @@ class ExtractionWorkflow:
                     "Unsaved changes for the previous feature are dropped. "
                 )
             else:
-                print(f"Current already set to {self.current_.region_id}. Reloading recipe...")
+                print(
+                    f"Current already set to {self.current_.region_id}. Reloading recipe..."
+                )
 
         # Create new current instance, pre-load data subset and set edit mode
         self.current_ = CurrentRegion(region_id, self._get_region_data(region_id))
@@ -154,7 +171,9 @@ class ExtractionWorkflow:
         # Display warning about the status of region
         state_dict = self._load_state()
         status: str = state_dict["status"][region_id]
-        print(f"WARNING: Current region has status {status.upper()}.") if verbose else None
+        print(
+            f"WARNING: Current region has status {status.upper()}."
+        ) if verbose else None
 
         # Update workflow state
         state_dict["last"] = region_id
@@ -278,6 +297,7 @@ class ExtractionWorkflow:
         # Get segment from segmented DataArray
         try:
             segment = self._get_segment(segment_id)
+            segment.name = self.acoustic_var
         except ValueError as e:
             print(f"Unable to fetch segment {segment_id} - {e}")
             return None
@@ -365,7 +385,9 @@ class ExtractionWorkflow:
             if failsafe_dir.exists():
                 shutil.rmtree(failsafe_dir)
             self._mark_completed(verbose)
-            print("Selected feature data & recipe saved successfully!") if verbose else None
+            print(
+                "Selected feature data & recipe saved successfully!"
+            ) if verbose else None
 
     # Step 4 - Mark the region as processed ("completed" or "rejected")
 
@@ -381,7 +403,9 @@ class ExtractionWorkflow:
         self._dump_state(state_dict)
 
         if verbose:
-            print(f"Region {self.current_.region_id} worflow status updated to 'completed'.")
+            print(
+                f"Region {self.current_.region_id} worflow status updated to 'completed'."
+            )
 
     def mark_rejected(self):
         """Set current region's status as rejected in workflow state
@@ -457,7 +481,7 @@ class ExtractionWorkflow:
             )
             .reset_index()
             .pivot_table(
-                index=["depth", "ping_time"],
+                index=["depth", "ping_time", "latitude", "longitude"],
                 columns="channel",
                 values="Sv",
             )
@@ -465,7 +489,9 @@ class ExtractionWorkflow:
         df.columns.name = None
 
         # Rename channel columns
-        df = df.rename(columns={col: f"channel_{i}_Sv" for i, col in enumerate(df.columns)}).reset_index()
+        df = df.rename(
+            columns={col: f"channel_{i}_Sv" for i, col in enumerate(df.columns)}
+        ).reset_index()
 
         # Add region attributes
         # Select region row
@@ -479,7 +505,9 @@ class ExtractionWorkflow:
         default_cols = ["region_id", "region_class"]
         if isinstance(add_region_cols, list) and len(add_region_cols) > 0:
             # Keep defaults and add additional
-            cols = default_cols + [col for col in add_region_cols if col not in default_cols]
+            cols = default_cols + [
+                col for col in add_region_cols if col not in default_cols
+            ]
         elif add_region_cols == "default":
             cols = default_cols
         else:
@@ -534,7 +562,11 @@ class ExtractionWorkflow:
             if status != "completed":
                 continue
             self.set_current(region_id, verbose=False)
-            df = self.get_feature_dataframe(add_region_cols)
+            try:
+                df = self.get_feature_dataframe(add_region_cols)
+            except Exception as e:
+                print(f"Failed with region {region_id} - {e}")
+                continue
             df.insert(0, "feature_id", i)
             df_list.append(df)
 
@@ -609,7 +641,9 @@ class ExtractionWorkflow:
 
             # Load to CurrentRegion dataclass
             self.current_.segmenter = joblib.load(segmenter_path)
-            self.current_.segment_id = yaml.safe_load(open(recipe_path, "r"))["segment_id"]
+            self.current_.segment_id = yaml.safe_load(open(recipe_path, "r"))[
+                "segment_id"
+            ]
             self.current_.feature_data = xr.open_dataarray(feature_path)
 
         # Else: we assume the directory is empty and there is no data to load
@@ -701,13 +735,17 @@ class WorkflowDataVisualizer:
 
         if how == "bbox":
             region_row = _select_region_row(self.parent.regions, region_id, close=True)
-            da_Sv = _select_bbox_data(self.parent.data, self.parent.acoustic_var, region_row)
+            da_Sv = _select_bbox_data(
+                self.parent.data, self.parent.acoustic_var, region_row
+            )
             return plot_channels(da_Sv, plot_api, region_row, **plot_kwrgs)
         elif how == "exact":
             da_Sv = self.parent.current_.region_data
             return plot_channels(da_Sv, plot_api, **plot_kwrgs)
         else:
-            raise ValueError(f"Invalid argument {how = }. Expected on of ['bbox', 'exact']")
+            raise ValueError(
+                f"Invalid argument {how = }. Expected on of ['bbox', 'exact']"
+            )
 
     def input_rgb(
         self,
@@ -715,18 +753,24 @@ class WorkflowDataVisualizer:
         channel_idx: Tuple[int, int, int] = (0, 1, 2),
         **plot_kwrgs,
     ):
+        """RGB echogram of the selected region."""
+
         # Checks
         if self.parent.current_ is None:
             raise ValueError("No current region in process (use .set_current).")
         region_id = self.parent.current_.region_id
 
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         if how == "bbox":
             region_row = _select_region_row(self.parent.regions, region_id, close=True)
-            da_Sv = _select_bbox_data(self.parent.data, self.parent.acoustic_var, region_row)
+            da_Sv = _select_bbox_data(
+                self.parent.data, self.parent.acoustic_var, region_row
+            )
             plot_rgb(da_Sv, channels, region_row, **plot_kwrgs)
         elif how == "exact":
             da_Sv = self.parent.current_.region_data
@@ -789,7 +833,9 @@ class WorkflowDataVisualizer:
         if self.parent.current_.segments is None:
             raise ValueError("No segmented data (use .segment)")
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         segments_values = self.parent.current_.segments["segment"].values
@@ -834,7 +880,9 @@ class WorkflowDataVisualizer:
         if self.parent.current_.feature_data is None:
             raise ValueError("No feature_data (use .select_segment)")
         if not len(channel_idx) == 3:
-            raise ValueError(f"channel_idx should be of length 3 for RGB plot. {channel_idx = }.")
+            raise ValueError(
+                f"channel_idx should be of length 3 for RGB plot. {channel_idx = }."
+            )
         channels = list(channel_idx)
 
         da_Sv = self.parent.current_.feature_data
@@ -845,7 +893,7 @@ class WorkflowDataVisualizer:
     def feature_frequency_response(
         self,
         relative_to_channel: int | None = None,
-        channel_values: Sequence[float] | None = None,
+        channel_values: List[float] | None = None,
         channel_varname: str = "channel",
     ):
         # Get feature data as dataframe
@@ -858,7 +906,9 @@ class WorkflowDataVisualizer:
         channel_cols = df.filter(regex=r"^channel_\d+").columns.to_list()
 
         # Build summary dataframe
-        summary = pd.DataFrame({"mean": df[channel_cols].mean(), "sd": df[channel_cols].std()})
+        summary = pd.DataFrame(
+            {"mean": df[channel_cols].mean(), "sd": df[channel_cols].std()}
+        )
         summary.index.name = "channel"
         summary = summary.reset_index()
 
@@ -883,6 +933,21 @@ class WorkflowDataVisualizer:
             plot = plot.opts(xlim=(xmin - 0.05 * xrange, xmax + 0.05 * xrange))
         except Exception:
             pass
+
+        # Default opts
+        varname = self.parent.acoustic_var
+        absolute = relative_to_channel is None
+        ylabel = varname if absolute else "Δ" + varname
+        title = "Frequency Response"
+        prefix = "Absolute " if absolute else "Relative "
+        title = prefix + title
+        plot = plot.opts(
+            ylim=(-85, -55) if absolute else (-15, 15),
+            ylabel=ylabel,
+            title=title,
+            show_grid=True,
+            width=400,
+        )
 
         return plot
 
@@ -935,7 +1000,9 @@ class WorkflowDataVisualizer:
                     f"does not match number of channels: {len(channel_cols)}."
                 )
             # Rename channel cols to contain channel values
-            df = df.rename(columns={col: val for col, val in zip(channel_cols, channel_values)})
+            df = df.rename(
+                columns={col: val for col, val in zip(channel_cols, channel_values)}
+            )
 
             # Use provided values as new channel columns
             channel_values_final = list(channel_values)

@@ -34,9 +34,13 @@ def _select_bbox_data(ds: xr.Dataset, var: str, region_row: pd.Series):
     depth_idx_bottom = (ds.depth.values <= depth_bottom)[::-1].argmax()
     depth_idx_bottom = len(ds.depth) - 1 - depth_idx_bottom
 
-    return ds[var].isel(
-        ping_time=slice(ping_idx_left, ping_idx_right + 1),
-        depth=slice(depth_idx_top, depth_idx_bottom + 1),
+    return (
+        ds[var]
+        .isel(
+            ping_time=slice(ping_idx_left, ping_idx_right + 1),
+            depth=slice(depth_idx_top, depth_idx_bottom + 1),
+        )
+        .copy()
     )
 
 
@@ -103,7 +107,9 @@ def _stack_for_sklearn(
     """Stack an acoustic DataArray for sklearn prediction."""
 
     # Stack (ping_time, depth) into a flat sample dimension -> (n_samples, channel)
-    da_stacked = da_Sv.stack(sample=(time_var, depth_var)).transpose("sample", channel_var)
+    da_stacked = da_Sv.stack(sample=(time_var, depth_var)).transpose(
+        "sample", channel_var
+    )
 
     # Drop NaN samples
     if drop_na:
@@ -120,9 +126,24 @@ def _unstack_sklearn_preds(
     """Unstack the sklearn prediction using the da_stacked array that was used as prediction
     input."""
 
+    # Create preds DataArray
     da_preds = da_stacked.isel(channel=0).drop_vars("channel")
     da_preds.data = preds
+
+    # Drop only non-dimension coords that are NOT MultiIndex levels
+    # (e.g. latitude, longitude) to avoid them becoming 2D after unstack
+    multiindex_levels = set(da_preds.indexes["sample"].names)
+    non_dim_coords = [
+        v
+        for v in da_preds.coords
+        if v not in da_preds.dims and v not in multiindex_levels
+    ]
+    da_preds = da_preds.drop_vars(non_dim_coords)
+
+    # Unstack
     da_preds = da_preds.unstack("sample")
+
+    # Rename
     da_preds.name = name
 
     return da_preds
@@ -149,9 +170,9 @@ def _classes_to_segments(da_Sv: xr.DataArray, da_classes: xr.DataArray) -> xr.Da
     # Create a list of masked arrays, one per segment
     segmented_data = []
     for seg in segment_values:
-        mask = da_classes == seg
-        masked_sv = da_Sv.where(mask)
-        segmented_data.append(masked_sv)
+        mask = (da_classes == seg).reindex_like(da_Sv.isel(channel=0), fill_value=False)
+        masked_Sv = da_Sv.where(mask)
+        segmented_data.append(masked_Sv)
 
     # Stack into a new dimension
     da_segments = xr.concat(segmented_data, dim="segment")

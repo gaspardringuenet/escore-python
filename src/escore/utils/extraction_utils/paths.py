@@ -4,7 +4,7 @@ from pathlib import Path
 class ResultsPathManager:
     """Manage EchotypeWorkflow paths."""
 
-    def __init__(self, results_dir: str):
+    def __init__(self, results_dir: str | Path):
         self.root = Path(results_dir).resolve()
         self.root.mkdir(exist_ok=True, parents=True)
 
