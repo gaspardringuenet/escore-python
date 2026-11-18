@@ -82,8 +82,8 @@ def test_classify_sv_chunked_and_masks(model, tmp_path):
     assert_array_equal(expected.label.values[0, 2:], [-2, -3])
     assert np.isnan(expected.squared_distance.values[0, 2:]).all()
     path = tmp_path / "classification.nc"
-    expected.to_netcdf(path)
-    with xr.open_dataset(path) as restored:
+    expected.to_netcdf(path, engine="netcdf4")
+    with xr.open_dataset(path, engine="netcdf4") as restored:
         assert_array_equal(restored.label.values, expected.label.values)
         assert_allclose(restored.squared_distance.values, expected.squared_distance.values, equal_nan=True)
     with pytest.raises(ValueError, match="channels"):

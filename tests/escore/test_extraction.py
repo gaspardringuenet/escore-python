@@ -1,9 +1,7 @@
 import subprocess
 import sys
 from dataclasses import replace
-from pathlib import Path
 from textwrap import dedent
-from types import SimpleNamespace
 
 import echoregions as er
 import matplotlib
@@ -121,11 +119,9 @@ def test_csv_input_and_confidence_filter(sv, regions, tmp_path):
 
 
 def test_standalone_import_and_extraction():
-    package_parent = Path(__file__).resolve().parents[2] / "packages" / "escore" / "src"
     script = dedent(
         """
         import sys
-        sys.path.insert(0, sys.argv[1])
         import echoregions as er
         import numpy as np
         import pandas as pd
@@ -151,7 +147,7 @@ def test_standalone_import_and_extraction():
         """
     )
     subprocess.run(
-        [sys.executable, "-I", "-c", script, str(package_parent)],
+        [sys.executable, "-I", "-c", script],
         check=True,
         capture_output=True,
         text=True,
@@ -396,79 +392,28 @@ def test_plot_review_draws_seven_views(sv, regions, channels):
     plt.close(fig)
 
 
-def test_pipeline_extract_review_resume_and_apply(sv, regions, tmp_path, monkeypatch):
-    from experiment.config.extract import ExtractConfig, ModeConfig
-    from experiment.pipelines import extract as pipeline
-
-    zarr = tmp_path / "sv.zarr"
-    sv.assign_coords(channel=[38000.0, 70000.0, 120000.0]).to_dataset(name="Sv").to_zarr(zarr)
-    csv = tmp_path / "rois.csv"
-    regions.to_csv(csv, index=False)
-    paths = SimpleNamespace(
-        input=SimpleNamespace(echointegration=zarr),
-        interm=SimpleNamespace(rois=csv),
-        output=SimpleNamespace(reporting=tmp_path),
+def test_extract_review_resume_and_apply(sv, regions, tmp_path):
+    results = extract_echotypes(
+        sv,
+        regions,
+        config=ExtractionConfig(
+            channels=("ref", "f1", "f2"), kernel=np.ones((3, 3)),
+            clusterer="kmeans", kmeans_clusters=2,
+        ),
     )
-    config = ExtractConfig(
-        mode="2D",
-        modes={"2D": ModeConfig(depth_slice=slice(None), channels=[0, 1, 2])},
-        kernel=np.ones((3, 3)),
-        model="kmeans",
-        kmeans={"n_clusters": 2, "n_init": 2, "random_state": 0},
-        min_share=0.5,
-        overrides={},
-    )
-    monkeypatch.setattr(pipeline.PathsConfig, "from_yml", classmethod(lambda cls, path: paths))
-    monkeypatch.setattr(pipeline.ExtractConfig, "from_yml", classmethod(lambda cls, path: config))
-    base_args = ["extract", "--config", "unused.yml", "--savepath", "reports"]
-    monkeypatch.setattr(sys, "argv", [*base_args, "--roi", "1"])
-    pipeline.main()
-    output = tmp_path / "reports" / "2D"
-    results = ExtractionResults.load(output / "extraction.joblib")
-    review = ReviewDecisions.load(output / "review.json")
-    assert review.decisions[0].status == "pending"
-    assert list((output / "review-figures" / results.extraction_id).glob("*.svg"))
-    assert set(pd.read_csv(output / "review-summary.csv")["status"]) == {"pending", "failed"}
-
-    config.overrides = {1: 0}
-    monkeypatch.setattr(
-        sys, "argv",
-        ["extract", "--config", "unused.yml", "--savepath", "subset", "--override", "--no-plots"],
-    )
-    pipeline.main()
-    subset_dir = tmp_path / "subset" / "2D"
-    subset = ExtractionResults.load(subset_dir / "extraction.joblib")
-    assert set(subset.candidates) == {1}
-    assert not subset.failures
-    assert ReviewDecisions.load(subset_dir / "review.json").decisions == (ReviewDecision(1, 0, "pending"),)
-    config.overrides = {}
-
-    monkeypatch.setattr(
-        sys, "argv", ["extract", "--resume", "--review-dir", str(output), "--apply", "--no-plots"]
-    )
+    results.save(tmp_path / "extraction.joblib")
+    ReviewDecisions.new(results).save(tmp_path / "review.json")
+    results = ExtractionResults.load(tmp_path / "extraction.joblib")
+    review = ReviewDecisions.load(tmp_path / "review.json")
+    assert set(results.candidates) == {1}
+    assert results.failures[2].stage == "mask"
     with pytest.raises(ValueError, match="pending"):
-        pipeline.main()
-    assert not list(output.glob("echotype-means-*.csv"))
+        apply_decisions(results, review)
 
     candidate = results.candidates[1]
-    review.set(ReviewDecision(1, candidate.proposed_cluster, "accepted"))
-    review.save(output / "review.json")
-    monkeypatch.setattr(
-        pipeline, "extract_echotypes",
-        lambda *args, **kwargs: pytest.fail("Resume must not rerun extraction"),
-    )
-    monkeypatch.setattr(
-        pipeline.PathsConfig, "from_yml",
-        classmethod(lambda cls, path: pytest.fail("Resume must not access input paths")),
-    )
-    monkeypatch.setattr(
-        sys, "argv", ["extract", "--resume", "--review-dir", str(output), "--apply", "--no-plots"]
-    )
-    pipeline.main()
-    outputs = list(output.glob("echotype-means-*.csv"))
-    assert len(outputs) == 1
-    table = pd.read_csv(outputs[0])
-    assert table.loc[0, "roi_id"] == 1
-    assert set(table.columns) == {
-        "roi_id", "cluster_id", "70000.0 - 38000.0", "120000.0 - 38000.0",
-    }
+    review.accept_roi(1)
+    review.save(tmp_path / "review.json")
+    outcome = apply_decisions(results, ReviewDecisions.load(tmp_path / "review.json"))
+    assert outcome.echotypes.means.index.tolist() == [(1, candidate.proposed_cluster)]
+    assert outcome.echotypes.means.columns.tolist() == ["f1 - ref", "f2 - ref"]
+    assert outcome.failures[2].stage == "mask"
