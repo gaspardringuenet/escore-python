@@ -3,6 +3,9 @@ name = "escore-python"
 version = "0.1.0"
 description = "Python implementation of the Escore method (Annasawmy et al., 2024)"
 readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{name = "Gaspard Ringuenet", email = "gaspard.ringuenet@proton.me"}]
 requires-python = ">=3.12"
 dependencies = [
     "echoregions>=0.2.3",
