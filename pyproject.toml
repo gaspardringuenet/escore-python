@@ -1,0 +1,39 @@
+[project]
+name = "escore-python"
+version = "0.1.0"
+description = "Python implementation of the Escore method (Annasawmy et al., 2024)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "echoregions>=0.2.3",
+    "fancy-echograms",
+    "joblib>=1.6.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.0",
+    "pandas>=2.0",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.15.1",
+    "tqdm>=4.70.1",
+    "xarray>=2024.11.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "escore"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel>=7.4.0",
+    "jupyter-core>=5.9.1",
+]
+
+[tool.uv.sources]
+fancy-echograms =  { git = "https://github.com/gaspardringuenet/fancy-echograms" }

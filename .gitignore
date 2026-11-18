@@ -1,0 +1,5 @@
+.private/
+.pytest_cache/
+.venv/
+dist/
+.DS_Store
